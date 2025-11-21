@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Free Fire Championship 2024 | Official Tournament</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Teko:wght@300;400;500;600;700&family=Rajdhani:wght@300;400;500;600;700&family=Bebas+Neue&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --ff-orange: #FF4500;
+    --ff-yellow: #FFB800;
+    --ff-red: #E60000;
+    --ff-dark: #0a0a0a;
+    --ff-gray: #1a1a1a;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Rajdhani', sans-serif;
+    background: var(--ff-dark);
+    color: #fff;
+    overflow-x: hidden;
+    line-height: 1.6;
+    cursor: none;
+}
+
+* {
+    cursor: none !important;
+}
+
+/* Crosshair Cursor */
+.cursor-crosshair {
+    width: 50px;
+    height: 50px;
+    position: fixed;
+    pointer-events: none;
+    z-index: 10000;
+    transition: transform 0.1s ease;
+}
+
+.cursor-crosshair::before,
+.cursor-crosshair::after {
+    content: '';
+    position: absolute;
+    background: var(--ff-orange);
+    box-shadow: 0 0 10px var(--ff-orange);
+}
+
+.cursor-crosshair::before {
+    width: 2px;
+    height: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.cursor-crosshair::after {
+    height: 2px;
+    width: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.cursor-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--ff-orange);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 15px var(--ff-orange);
+}
+
+.cursor-outer {
+    width: 35px;
+    height: 35px;
+    border: 2px solid var(--ff-orange);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.5;
+    animation: rotateCursor 3s linear infinite;
+}
+
+@keyframes rotateCursor {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.cursor-crosshair.active {
+    transform: scale(0.8);
+}
+
+.cursor-crosshair.active .cursor-outer {
+    border-color: var(--ff-red);
+    box-shadow: 0 0 20px var(--ff-red);
+}
+
+/* Navigation */
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    border-bottom: 2px solid var(--ff-orange);
+}
+
+.nav-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+}
+
+.logo-text {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, var(--ff-orange), var(--ff-yellow));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.nav-links {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+}
+
+.nav-links a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--ff-orange);
+    transition: width 0.3s;
+}
+
+.nav-links a:hover::after {
+    width: 100%;
+}
+
+/* Hero Section */
+.hero {
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.hero-bg {
+    position: absolute;
+    inset: 0;
+    background: 
+        linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.5)),
+        url('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    filter: brightness(0.7);
+    animation: slowZoom 20s infinite alternate;
+}
+
+@keyframes slowZoom {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.1); }
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(circle at 30% 50%, rgba(255,69,0,0.15) 0%, transparent 50%),
+        radial-gradient(circle at 70% 50%, rgba(255,184,0,0.15) 0%, transparent 50%);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 1200px;
+    padding: 0 30px;
+}
+
+.tournament-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--ff-red), var(--ff-orange));
+    padding: 12px 35px;
+    border-radius: 30px;
+    font-family: 'Teko', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 40px rgba(255,69,0,0.4);
+    border: 2px solid rgba(255,255,255,0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 10px 40px rgba(255,69,0,0.4); }
+    50% { transform: scale(1.05); box-shadow: 0 15px 60px rgba(255,69,0,0.6); }
+}
+
+.hero-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(4rem, 12vw, 10rem);
+    line-height: 0.9;
+    margin-bottom: 30px;
+    text-shadow: 
+        0 0 20px rgba(255,69,0,0.5),
+        0 0 40px rgba(255,69,0,0.3),
+        0 5px 15px rgba(0,0,0,0.8);
+    letter-spacing: 5px;
+}
+
+.hero-subtitle {
+    font-family: 'Teko', sans-serif;
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    font-weight: 300;
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 50px;
+    letter-spacing: 2px;
+}
+
+.hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 50px;
+    flex-wrap: wrap;
+    margin-top: 60px;
+}
+
+.stat-box {
+    text-align: center;
+    padding: 25px 40px;
+    background: rgba(10,10,10,0.8);
+    border: 2px solid rgba(255,69,0,0.5);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s;
+}
+
+.stat-box:hover {
+    transform: translateY(-10px);
+    border-color: var(--ff-orange);
+    box-shadow: 0 15px 50px rgba(255,69,0,0.5);
+}
+
+.stat-number {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 4rem;
+    color: var(--ff-orange);
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(255,69,0,0.6);
+}
+
+.stat-label {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 10px;
+}
+
+.scroll-down {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: bounce 2s infinite;
+}
+
+.scroll-down span {
+    display: block;
+    width: 30px;
+    height: 50px;
+    border: 2px solid var(--ff-orange);
+    border-radius: 25px;
+    position: relative;
+}
+
+.scroll-down span::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--ff-orange);
+    border-radius: 50%;
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: scrollDot 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(10px); }
+}
+
+@keyframes scrollDot {
+    0% { top: 10px; opacity: 1; }
+    100% { top: 30px; opacity: 0; }
+}
+
+/* Section Common Styles */
+section {
+    padding: 120px 30px;
+    position: relative;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 80px;
+}
+
+.section-tag {
+    display: inline-block;
+    background: rgba(255,69,0,0.1);
+    border: 2px solid var(--ff-orange);
+    padding: 8px 30px;
+    border-radius: 25px;
+    font-family: 'Teko', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--ff-orange);
+    margin-bottom: 25px;
+}
+
+.section-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(3rem, 6vw, 5rem);
+    margin-bottom: 25px;
+    letter-spacing: 3px;
+}
+
+.section-desc {
+    font-size: 1.2rem;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.8);
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Tournament Format */
+.format-section {
+    background: 
+        linear-gradient(rgba(10,10,10,0.95), rgba(10,10,10,0.95)),
+        url('https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+.format-card {
+    background: rgba(26,26,26,0.9);
+    border: 2px solid rgba(255,69,0,0.3);
+    border-radius: 20px;
+    padding: 50px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.format-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,69,0,0.1), transparent);
+    transition: left 0.7s;
+}
+
+.format-card:hover::before {
+    left: 100%;
+}
+
+.format-card:hover {
+    border-color: var(--ff-orange);
+    box-shadow: 0 20px 60px rgba(255,69,0,0.3);
+}
+
+.round-header {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 40px;
+    padding-bottom: 30px;
+    border-bottom: 2px solid rgba(255,69,0,0.2);
+}
+
+.round-number {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 6rem;
+    line-height: 1;
+    color: var(--ff-orange);
+    text-shadow: 0 0 30px rgba(255,69,0,0.6);
+}
+
+.round-info h3 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 2.5rem;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+}
+
+.round-info p {
+    font-size: 1.1rem;
+    color: rgba(255,255,255,0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Maps Grid */
+.maps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 30px;
+    margin-top: 50px;
+}
+
+.map-card {
+    position: relative;
+    height: 450px;
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 3px solid rgba(255,69,0,0.4);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.map-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(0,0,0,0.2) 0%,
+        rgba(0,0,0,0.7) 50%,
+        rgba(0,0,0,0.95) 100%
+    );
+    z-index: 1;
+    transition: all 0.4s;
+}
+
+.map-card:hover::before {
+    background: linear-gradient(
+        180deg,
+        rgba(255,69,0,0.1) 0%,
+        rgba(0,0,0,0.6) 50%,
+        rgba(0,0,0,0.9) 100%
+    );
+}
+
+.map-card:hover {
+    transform: translateY(-15px) scale(1.02);
+    border-color: var(--ff-orange);
+    box-shadow: 0 25px 60px rgba(255,69,0,0.5);
+}
+
+.map-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s;
+}
+
+.map-card:hover .map-image {
+    transform: scale(1.15);
+}
+
+.map-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 35px;
+    z-index: 2;
+}
+
+.map-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    filter: drop-shadow(0 0 10px rgba(255,69,0,0.8));
+}
+
+.map-name {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 2.5rem;
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+    color: var(--ff-yellow);
+    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+}
+
+.map-desc {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.9);
+}
+
+.map-features {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.feature-tag {
+    background: rgba(255,69,0,0.2);
+    border: 1px solid var(--ff-orange);
+    padding: 6px 15px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Qualification Process */
+.process-section {
+    background: 
+        linear-gradient(rgba(10,10,10,0.95), rgba(10,10,10,0.95)),
+        url('https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+.process-timeline {
+    max-width: 1000px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.process-timeline::before {
+    content: '';
+    position: absolute;
+    left: 50px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--ff-orange), transparent);
+}
+
+.process-step {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 60px;
+    position: relative;
+}
+
+.step-number {
+    flex-shrink: 0;
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, var(--ff-red), var(--ff-orange));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 3rem;
+    box-shadow: 0 10px 40px rgba(255,69,0,0.5);
+    position: relative;
+    z-index: 1;
+}
+
+.step-content {
+    flex: 1;
+    background: rgba(26,26,26,0.8);
+    padding: 35px;
+    border-radius: 20px;
+    border: 2px solid rgba(255,69,0,0.3);
+    transition: all 0.3s;
+}
+
+.step-content:hover {
+    transform: translateX(15px);
+    border-color: var(--ff-orange);
+    box-shadow: 0 15px 50px rgba(255,69,0,0.3);
+}
+
+.step-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 2rem;
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+    color: var(--ff-yellow);
+}
+
+.step-desc {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.8);
+}
+
+.step-highlight {
+    background: rgba(255,69,0,0.1);
+    border-left: 4px solid var(--ff-orange);
+    padding: 15px 20px;
+    margin-top: 20px;
+    border-radius: 5px;
+    font-weight: 600;
+    color: var(--ff-yellow);
+}
+
+/* Grand Final */
+.final-section {
+    background: 
+        linear-gradient(rgba(10,10,10,0.9), rgba(10,10,10,0.9)),
+        url('https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    position: relative;
+}
+
+.final-section::before {
+    content: '👑';
+    position: absolute;
+    font-size: 30rem;
+    opacity: 0.03;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    pointer-events: none;
+}
+
+.champion-card {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, rgba(255,215,0,0.05), rgba(255,69,0,0.05));
+    border: 3px solid var(--ff-yellow);
+    border-radius: 30px;
+    padding: 70px 50px;
+    text-align: center;
+    box-shadow: 
+        0 0 100px rgba(255,215,0,0.2),
+        inset 0 0 100px rgba(255,215,0,0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.champion-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255,215,0,0.1), transparent);
+    animation: shimmer 4s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.champion-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(3rem, 7vw, 6rem);
+    color: #FFD700;
+    text-shadow: 
+        0 0 20px rgba(255,215,0,0.8),
+        0 0 40px rgba(255,215,0,0.5),
+        0 5px 15px rgba(0,0,0,0.8);
+    margin-bottom: 30px;
+    letter-spacing: 4px;
+    position: relative;
+    z-index: 1;
+}
+
+.final-desc {
+    font-size: 1.3rem;
+    line-height: 1.9;
+    color: rgba(255,255,255,0.9);
+    max-width: 800px;
+    margin: 0 auto 50px;
+    position: relative;
+    z-index: 1;
+}
+
+.scoring-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+    margin-top: 50px;
+    position: relative;
+    z-index: 1;
+}
+
+.scoring-item {
+    background: rgba(0,0,0,0.5);
+    border: 2px solid rgba(255,215,0,0.5);
+    border-radius: 20px;
+    padding: 30px;
+    transition: all 0.3s;
+}
+
+.scoring-item:hover {
+    transform: translateY(-10px);
+    border-color: #FFD700;
+    box-shadow: 0 15px 50px rgba(255,215,0,0.3);
+    background: rgba(255,215,0,0.1);
+}
+
+.scoring-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 0 15px rgba(255,215,0,0.6));
+}
+
+.scoring-label {
+    font-family: 'Teko', sans-serif;
+    font-size: 1.3rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.9);
+}
+
+/* CTA Section */
+.cta-section {
+    background: 
+        linear-gradient(rgba(255,69,0,0.9), rgba(230,0,0,0.9)),
+        url('https://images.unsplash.com/photo-1560253023-3ec5d502959f?w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    text-align: center;
+    padding: 150px 30px;
+}
+
+.cta-title {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(3rem, 7vw, 6rem);
+    margin-bottom: 30px;
+    letter-spacing: 4px;
+    text-shadow: 0 5px 20px rgba(0,0,0,0.5);
+}
+
+.cta-desc {
+    font-size: 1.4rem;
+    line-height: 1.8;
+    max-width: 800px;
+    margin: 0 auto 50px;
+    color: rgba(255,255,255,0.95);
+}
+
+.cta-buttons {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 20px 50px;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 50px;
+    transition: all 0.3s;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.btn-primary {
+    background: #fff;
+    color: var(--ff-red);
+}
+
+.btn-primary:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 15px 60px rgba(255,255,255,0.4);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: #fff;
+    border: 3px solid #fff;
+}
+
+.btn-secondary:hover {
+    background: #fff;
+    color: var(--ff-red);
+    transform: translateY(-5px) scale(1.05);
+}
+
+/* Footer */
+footer {
+    background: var(--ff-dark);
+    padding: 60px 30px 30px;
+    border-top: 3px solid var(--ff-orange);
+}
+
+.footer-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 50px;
+    margin-bottom: 50px;
+}
+
+.footer-section h3 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+    color: var(--ff-orange);
+}
+
+.footer-section ul {
+    list-style: none;
+}
+
+.footer-section ul li {
+    margin-bottom: 12px;
+}
+
+.footer-section a {
+    color: rgba(255,255,255,0.7);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.footer-section a:hover {
+    color: var(--ff-orange);
+}
+
+.social-links {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.social-links a {
+    width: 45px;
+    height: 45px;
+    background: rgba(255,69,0,0.1);
+    border: 2px solid var(--ff-orange);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    transition: all 0.3s;
+}
+
+.social-links a:hover {
+    background: var(--ff-orange);
+    transform: translateY(-5px);
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 30px;
+    border-top: 1px solid rgba(255,69,0,0.2);
+    color: rgba(255,255,255,0.5);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+    
+    .hero-stats {
+        gap: 20px;
+    }
+    
+    .stat-box {
+        padding: 20px 30px;
+    }
+    
+    .maps-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .round-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .process-timeline::before {
+        left: 20px;
+    }
+    
+    .process-step {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .step-number {
+        width: 80px;
+        height: 80px;
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-title {
+        font-size: 3rem;
+    }
+    
+    .section-title {
+        font-size: 2.5rem;
+    }
+}
+</style>
+</head>
+<body onclick="enterFullscreen()">
+
+<!-- Custom Cursor -->
+<div class="cursor-crosshair">
+    <div class="cursor-outer"></div>
+    <div class="cursor-dot"></div>
+</div>
+
+<!-- Navigation -->
+<nav class="navbar">
+    <div class="nav-container">
+        <div class="logo">
+            <img src="./utils/logo.png" style="background-color: black;" alt="Free Fire Logo" class="logo-img">
+            <span class="logo-text">FF CHAMPIONSHIP</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#format">Format</a></li>
+            <li><a href="#qualification">Qualification</a></li>
+            <li><a href="#finals">Finals</a></li>
+            <li><a href="#register">Register</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <div class="tournament-badge">🔥 Official Esports Championship 2025</div>
+        <h1 class="hero-title">FREE FIRE<br>BATTLE CHAMPIONSHIP</h1>
+        <p class="hero-subtitle">The Ultimate Battle Royale Tournament</p>
+        
+        <div class="hero-stats">
+            <div class="stat-box">
+                <div class="stat-number">48</div>
+                <div class="stat-label">Finalists</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">1</div>
+                <div class="stat-label">Champion</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="scroll-down">
+        <span></span>
+    </div>
+</section>
+
+<!-- Tournament Format -->
+<section class="format-section" id="format">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">⚔️ Tournament Structure</span>
+            <h2 class="section-title">COMPETITION FORMAT</h2>
+            <p class="section-desc">
+                A two-phase championship designed to test skill, strategy, and survival instincts. 
+                300 players begin the journey, but only one will claim the ultimate victory.
+            </p>
+        </div>
+        
+        <!-- Round 1: Qualification -->
+        <div class="format-card">
+            <div class="round-header">
+                <div class="round-number">01</div>
+                <div class="round-info">
+                    <h3>QUALIFICATION ROUND</h3>
+                    <p>Three Maps • Cumulative Scoring • Top 48 Advance</p>
+                </div>
+            </div>
+            
+            <p style="font-size: 1.2rem; line-height: 1.8; color: rgba(255,255,255,0.8); margin-bottom: 40px;">
+                The qualification stage spans three legendary Free Fire maps. Your performance is tracked cumulatively 
+                across all matches. Every elimination counts toward your total score. Consistency and adaptability 
+                are key to securing your spot in the finals.
+            </p>
+            
+            <div class="maps-grid">
+                <!-- Bermuda -->
+                <div class="map-card">
+                    <img src="./utils/bermuda.jpg" alt="Bermuda Map" class="map-image">
+                    <div class="map-content">
+                        <div class="map-icon">🏝️</div>
+                        <h3 class="map-name">BERMUDA</h3>
+                        <p class="map-desc">
+                            The classic Free Fire battleground. Dense forests, urban combat zones, and coastal areas 
+                            provide diverse tactical opportunities. Master this iconic map to start strong.
+                        </p>
+                        <div class="map-features">
+                            <span class="feature-tag">Urban Warfare</span>
+                            <span class="feature-tag">Forest Combat</span>
+                            <span class="feature-tag">Coastal Zones</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Kalahari -->
+                <div class="map-card">
+                    <img src="./utils/kalahari.webp" alt="Kalahari Map" class="map-image">
+                    <div class="map-content">
+                        <div class="map-icon">🏜️</div>
+                        <h3 class="map-name">KALAHARI</h3>
+                        <p class="map-desc">
+                            Survive the scorching desert battlefield. Open landscapes demand strategic positioning 
+                            and long-range combat skills. Your cumulative score builds with each elimination.
+                        </p>
+                        <div class="map-features">
+                            <span class="feature-tag">Desert Terrain</span>
+                            <span class="feature-tag">Long Range</span>
+                            <span class="feature-tag">Open Fields</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Purgatory -->
+                <div class="map-card">
+                    <img src="./utils/purgatory.webp" alt="Purgatory Map" class="map-image">
+                    <div class="map-content">
+                        <div class="map-icon">⛰️</div>
+                        <h3 class="map-name">PURGATORY</h3>
+                        <p class="map-desc">
+                            The judgment ground where finals are decided. Urban warfare meets mountainous terrain. 
+                            Your complete skillset is tested here as your qualification fate is sealed.
+                        </p>
+                        <div class="map-features">
+                            <span class="feature-tag">Mountain Peaks</span>
+                            <span class="feature-tag">City Combat</span>
+                            <span class="feature-tag">Mixed Terrain</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Qualification Process -->
+<section class="process-section" id="qualification">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">📊 Selection System</span>
+            <h2 class="section-title">QUALIFICATION CRITERIA</h2>
+            <p class="section-desc">
+                Our advanced scoring system identifies the most skilled and consistent players. 
+                Only the elite 48 warriors earn their place in the Grand Final.
+            </p>
+        </div>
+        
+        <div class="process-timeline">
+            <div class="process-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3 class="step-title">Cumulative Kill Tracking</h3>
+                    <p class="step-desc">
+                        Every elimination across Bermuda, Kalahari, and Purgatory is meticulously tracked and added 
+                        to your personal leaderboard score. This system rewards consistent performance rather than 
+                        single-match dominance, ensuring that truly skilled players advance.
+                    </p>
+                    <div class="step-highlight">
+                        💡 Pro Tip: One poor match won't eliminate you if your overall performance remains strong
+                    </div>
+                </div>
+            </div>
+            
+            <div class="process-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3 class="step-title">Real-Time Leaderboard</h3>
+                    <p class="step-desc">
+                        After each match, the leaderboard is updated live, showing player rankings based on cumulative 
+                        eliminations. Watch your position change in real-time as the tournament progresses. The 
+                        pressure builds as you see exactly where you stand against 299 other competitors.
+                    </p>
+                    <div class="step-highlight">
+                        📈 Live updates after each match keep the competitive tension at maximum
+                    </div>
+                </div>
+            </div>
+            
+            <div class="process-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3 class="step-title">Top 48 Automatic Qualification</h3>
+                    <p class="step-desc">
+                        When all three qualification matches conclude, the 48 players with the highest cumulative 
+                        kill counts automatically secure their spots in the Grand Final. No wildcards, no second 
+                        chances—pure performance-based advancement to ensure the best of the best compete for the title.
+                    </p>
+                    <div class="step-highlight">
+                        🎯 Cutthroat competition: Only 16% of participants advance to the finals
+                    </div>
+                </div>
+            </div>
+            
+            <div class="process-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3 class="step-title">Tiebreaker Protocol</h3>
+                    <p class="step-desc">
+                        In the rare event of identical kill counts among competing players, the tiebreaker system 
+                        examines total damage dealt during the Purgatory match (Map 3). Higher damage output 
+                        demonstrates superior combat effectiveness and tactical positioning, determining the higher-ranked player.
+                    </p>
+                    <div class="step-highlight">
+                        ⚖️ Fair resolution: Damage dealt serves as the ultimate skill differentiator
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Grand Final -->
+<section class="final-section" id="finals">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">👑 Championship Match</span>
+            <h2 class="section-title">GRAND FINAL SHOWDOWN</h2>
+            <p class="section-desc">
+                48 elite warriors. One decisive battle. No second chances. This is where champions are crowned 
+                and legends are immortalized in Free Fire history.
+            </p>
+        </div>
+        
+        <div class="champion-card">
+            <h3 class="champion-title">WINNER TAKES ALL</h3>
+            <p class="final-desc">
+                The 48 qualified finalists face off in a single, high-stakes solo match on the map of champions. 
+                Every decision matters. Every second counts. Survival time, eliminations, and final placement 
+                combine to determine the ultimate Free Fire Champion. Strategy, skill, and nerves of steel 
+                converge in this climactic battle.
+            </p>
+            
+            <div class="scoring-grid">
+                <div class="scoring-item">
+                    <div class="scoring-icon">💎</div>
+                    <div class="scoring-label">Elimination Points<br><small style="opacity: 0.7;">Each kill earns points</small></div>
+                </div>
+                <div class="scoring-item">
+                    <div class="scoring-icon">⏱️</div>
+                    <div class="scoring-label">Survival Time<br><small style="opacity: 0.7;">Longer survival = more points</small></div>
+                </div>
+                <div class="scoring-item">
+                    <div class="scoring-icon">🎯</div>
+                    <div class="scoring-label">Placement Bonus<br><small style="opacity: 0.7;">Top 10 finish multiplier</small></div>
+                </div>
+                <div class="scoring-item">
+                    <div class="scoring-icon">👑</div>
+                    <div class="scoring-label">Victory Royale<br><small style="opacity: 0.7;">Champion crowned</small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section" id="register">
+    <div class="container">
+        <h2 class="cta-title">ARE YOU READY TO BECOME A LEGEND?</h2>
+        <p class="cta-desc">
+            Registration is now open for all eligible players. Secure your spot in the most competitive 
+            Free Fire tournament of the year. Show the world your skills and claim your place in esports history.
+        </p>
+        <div class="cta-buttons">
+            <a href="/playerRegistration" target="_blank" class="btn btn-primary">Register Now</a>
+            <a href="./utils/pdfs/Free_Fire_Tournament_Rules.pdf" target="_blank" class="btn btn-secondary">View Rules</a>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="footer-content">
+        <div class="footer-section">
+            <h3>About Tournament</h3>
+            <ul>
+                <li><a href="#">Tournament Rules</a></li>
+                <li><a href="#">Eligibility</a></li>
+                <li><a href="#">Schedule</a></li>
+                <li><a href="#">FAQ</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-section">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="#">Player Registration</a></li>
+                <li><a href="#">Live Leaderboard</a></li>
+                <li><a href="#">Match Results</a></li>
+                <li><a href="#">Contact Support</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-section">
+            <h3>Resources</h3>
+            <ul>
+                <li><a href="#">Strategy Guides</a></li>
+                <li><a href="#">Map Analysis</a></li>
+                <li><a href="#">Pro Tips</a></li>
+                <li><a href="#">Past Champions</a></li>
+            </ul>
+        </div>
+        
+        <div class="footer-section">
+            <h3>Follow Us</h3>
+            <div class="social-links">
+                <a href="#">📘</a>
+                <a href="#">🐦</a>
+                <a href="#">📷</a>
+                <a href="#">🎮</a>
+                <a href="#">📺</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer-bottom">
+        <p>&copy; 2024 Free Fire Championship. All rights reserved. | Official Esports Tournament</p>
+    </div>
+</footer>
+
+<script>
+
+//     function enterFullscreen() {
+//   const elem = document.documentElement;
+//   if (elem.requestFullscreen) {
+//     elem.requestFullscreen();
+//   } else if (elem.webkitRequestFullscreen) {
+//     elem.webkitRequestFullscreen();
+//   } else if (elem.msRequestFullscreen) {
+//     elem.msRequestFullscreen();
+//   }
+// }
+// Custom Gaming Cursor
+const cursor = document.querySelector('.cursor-crosshair');
+let mouseX = 0, mouseY = 0;
+let cursorX = 0, cursorY = 0;
+
+document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+});
+
+function animateCursor() {
+    //const speed = 0.0;
+    cursorX += (mouseX - cursorX) ;
+    cursorY += (mouseY - cursorY) ;
+    
+    cursor.style.left = cursorX + 'px';
+    cursor.style.top = cursorY + 'px';
+    
+    requestAnimationFrame(animateCursor);
+}
+animateCursor();
+
+// Add active state on click
+document.addEventListener('mousedown', () => {
+    cursor.classList.add('active');
+});
+
+document.addEventListener('mouseup', () => {
+    cursor.classList.remove('active');
+});
+
+// Change cursor on hover over interactive elements
+const interactiveElements = document.querySelectorAll('a, button, .btn, .map-card, .stat-box, .nav-links a');
+interactiveElements.forEach(el => {
+    el.addEventListener('mouseenter', () => {
+        cursor.style.transform = 'scale(1.3)';
+        cursor.style.opacity = '0.8';
+    });
+    
+    el.addEventListener('mouseleave', () => {
+        cursor.style.transform = 'scale(1)';
+        cursor.style.opacity = '1';
+    });
+});
+
+// Smooth Scroll for Navigation
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            const offset = 80;
+            const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
+            window.scrollTo({
+                top: targetPosition,
+                behavior: 'smooth'
+            });
+        }
+    });
+});
+
+// Navbar Background on Scroll
+const navbar = document.querySelector('.navbar');
+window.addEventListener('scroll', () => {
+    if (window.scrollY > 100) {
+        navbar.style.background = 'rgba(10, 10, 10, 0.98)';
+    } else {
+        navbar.style.background = 'rgba(10, 10, 10, 0.95)';
+    }
+});
+
+// Intersection Observer for Animations
+const observerOptions = {
+    threshold: 0.2,
+    rootMargin: '0px 0px -100px 0px'
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '0';
+            entry.target.style.transform = 'translateY(50px)';
+            entry.target.style.transition = 'all 0.8s ease';
+            
+            setTimeout(() => {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }, 100);
+            
+            observer.unobserve(entry.target);
+        }
+    });
+}, observerOptions);
+
+// Observe elements
+document.querySelectorAll('.format-card, .map-card, .process-step, .champion-card').forEach(el => {
+    observer.observe(el);
+});
+
+// Counter Animation for Stats
+function animateCounter(element) {
+    const target = element.textContent;
+    const isNumber = /^\d+$/.test(target);
+    
+    if (isNumber) {
+        const targetNum = parseInt(target);
+        let current = 0;
+        const increment = targetNum / 50;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= targetNum) {
+                element.textContent = targetNum;
+                clearInterval(timer);
+            } else {
+                element.textContent = Math.floor(current);
+            }
+        }, 30);
+    }
+}
+
+const statsObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            animateCounter(entry.target);
+            statsObserver.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.5 });
+
+document.querySelectorAll('.stat-number').forEach(stat => {
+    statsObserver.observe(stat);
+});
+
+// Map Card Parallax Effect
+document.querySelectorAll('.map-card').forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        const rotateX = (y - centerY) / 20;
+        const rotateY = (centerX - x) / 20;
+        
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-15px) scale(1.02)`;
+    });
+    
+    card.addEventListener('mouseleave', () => {
+        card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) translateY(0) scale(1)';
+    });
+});
+
+// Button Ripple Effect
+document.querySelectorAll('.btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+        const ripple = document.createElement('span');
+        const rect = this.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        const x = e.clientX - rect.left - size / 2;
+        const y = e.clientY - rect.top - size / 2;
+        
+        ripple.style.width = ripple.style.height = size + 'px';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        ripple.style.position = 'absolute';
+        ripple.style.borderRadius = '50%';
+        ripple.style.background = 'rgba(255,255,255,0.5)';
+        ripple.style.transform = 'scale(0)';
+        ripple.style.pointerEvents = 'none';
+        
+        this.style.position = 'relative';
+        this.style.overflow = 'hidden';
+        this.appendChild(ripple);
+        
+        ripple.animate([
+            { transform: 'scale(0)', opacity: 1 },
+            { transform: 'scale(4)', opacity: 0 }
+        ], {
+            duration: 600,
+            easing: 'ease-out'
+        });
+        
+        setTimeout(() => ripple.remove(), 600);
+    });
+});
+
+// Disable custom cursor on mobile/touch devices
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+    cursor.style.display = 'none';
+    document.body.style.cursor = 'auto';
+    document.querySelectorAll('*').forEach(el => {
+        el.style.cursor = 'auto';
+    });
+}
+
+// Console Easter Egg
+console.log('%c🔥 FREE FIRE CHAMPIONSHIP 2024 🔥', 'color: #FF4500; font-size: 24px; font-weight: bold; text-shadow: 0 0 10px #FF4500;');
+console.log('%c⚔️ May the best warrior win!', 'color: #FFB800; font-size: 16px;');
+</script>
+
+</body>
+</html>

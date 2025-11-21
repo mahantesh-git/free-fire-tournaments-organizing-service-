@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Fire Tournament Registration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Exo+2:wght@400;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Exo 2', sans-serif;
+        }
+        
+        body {
+            background: #0b0e17;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: linear-gradient(180deg, #0b0e17 0%, #1a1d2e 50%, #0b0e17 100%);
+        }
+        
+        .content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .card {
+            background: rgba(20, 24, 38, 0.95);
+            border: 1px solid rgba(255, 68, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .accent-border {
+            border-left: 3px solid #ff4400;
+        }
+        
+        input[type="text"], input[type="number"], select, input[type="file"] {
+            background: rgba(30, 35, 50, 0.8);
+            border: 1px solid rgba(255, 68, 0, 0.2);
+            color: #fff;
+            transition: all 0.2s ease;
+        }
+        
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: #ff4400;
+            background: rgba(30, 35, 50, 1);
+        }
+        
+        .btn {
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .stat-item {
+            background: rgba(30, 35, 50, 0.6);
+            border: 1px solid rgba(255, 68, 0, 0.15);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            background: rgba(20, 24, 38, 0.98);
+            margin: 5% auto;
+            padding: 30px;
+            border: 2px solid rgba(255, 68, 0, 0.3);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+
+        .close:hover {
+            color: #ff4400;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #ff4400;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .alert-success {
+            background: #10b981;
+        }
+
+        .alert-error {
+            background: #ef4444;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .player-card {
+            background: rgba(30, 35, 50, 0.6);
+            border: 1px solid rgba(255, 68, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+
+        .player-card:hover {
+            background: rgba(30, 35, 50, 0.8);
+            border-color: rgba(255, 68, 0, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .scrollbar-custom::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-track {
+            background: rgba(30, 35, 50, 0.5);
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+            background: rgba(255, 68, 0, 0.4);
+            border-radius: 4px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 68, 0, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    
+    <div class="content p-4 md:p-6 lg:p-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="card rounded-lg p-6 mb-6 shadow-xl">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 class="text-3xl md:text-4xl font-bold text-white mb-1">
+                            <span class="text-orange-500">FREE FIRE</span> TOURNAMENT
+                        </h1>
+                        <p class="text-gray-400 text-sm font-medium">Player Registration Portal</p>
+                    </div>
+                    
+                    <!-- Stats -->
+                    <div class="flex gap-6">
+                        <div class="stat-item rounded px-4 py-2">
+                            <div class="text-2xl font-bold text-white" id="totalSquads">0</div>
+                            <div class="text-xs text-gray-400 uppercase">Squads</div>
+                        </div>
+                        <div class="stat-item rounded px-4 py-2">
+                            <div class="text-2xl font-bold text-white" id="totalIndividual">0</div>
+                            <div class="text-xs text-gray-400 uppercase">Individual</div>
+                        </div>
+                        <div class="stat-item rounded px-4 py-2">
+                            <div class="text-2xl font-bold text-white" id="totalRegistered">0</div>
+                            <div class="text-xs text-gray-400 uppercase">Total Players</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card rounded-lg p-5 mb-6 shadow-xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <button onclick="showQRModal()" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded text-sm">
+                        📱 SHOW QR CODE
+                    </button>
+                    <button onclick="document.getElementById('xlsxInput').click()" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded text-sm">
+                        📥 IMPORT XLSX
+                    </button>
+                    <button onclick="loadPlayers(); loadSquads();" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded text-sm">
+                        🔄 REFRESH
+                    </button>
+                    <button onclick="window.location.href='/squadScoreCard'" class="btn bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded text-sm">
+                        📊 GO TO SCOREBOARD
+                    </button>
+                </div>
+                <input type="file" id="xlsxInput" accept=".xlsx,.xls" style="display: none;" onchange="importXLSX(event)">
+            </div>
+
+            <!-- Add Player/Squad Form -->
+            <div class="card rounded-lg p-6 mb-6 shadow-xl">
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                    <span class="text-orange-500 mr-2">➕</span>
+                    Add New Registration
+                </h3>
+                
+                <!-- Registration Type Selector -->
+                <div class="flex gap-4 mb-4">
+                    <button id="individualBtn" onclick="setRegistrationType('individual')" class="flex-1 btn bg-orange-600 text-white font-bold py-3 px-4 rounded text-sm">
+                        👤 INDIVIDUAL
+                    </button>
+                    <button id="squadBtn" onclick="setRegistrationType('squad')" class="flex-1 btn bg-gray-700 text-white font-bold py-3 px-4 rounded text-sm">
+                        👥 SQUAD (4 Players)
+                    </button>
+                </div>
+
+                <!-- Individual Form -->
+                <div id="individualForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <input type="text" id="playerName" placeholder="Player Name *" class="rounded px-4 py-3 text-sm font-medium">
+                    <input type="text" id="ffName" placeholder="FF Name *" class="rounded px-4 py-3 text-sm font-medium">
+                    <input type="text" id="ffId" placeholder="FF ID *" class="rounded px-4 py-3 text-sm font-medium">
+                    <button onclick="addPlayer()" class="btn bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded text-sm">
+                        ADD PLAYER
+                    </button>
+                </div>
+
+                <!-- Squad Form -->
+                <div id="squadForm" style="display: none;">
+                    <div class="mb-4">
+                        <input type="text" id="squadName" placeholder="Squad Name *" class="w-full rounded px-4 py-3 text-sm font-medium">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-3">
+                            <div class="text-orange-500 font-bold text-sm">Player 1</div>
+                            <input type="text" id="squad_player1_name" placeholder="Player Name *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                            <input type="text" id="squad_player1_ffname" placeholder="FF Name *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                            <input type="text" id="squad_player1_ffid" placeholder="FF ID *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                        </div>
+                        <div class="space-y-3">
+                            <div class="text-orange-500 font-bold text-sm">Player 2</div>
+                            <input type="text" id="squad_player2_name" placeholder="Player Name *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                            <input type="text" id="squad_player2_ffname" placeholder="FF Name *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                            <input type="text" id="squad_player2_ffid" placeholder="FF ID *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                        </div>
+                        <div class="space-y-3">
+                            <div class="text-orange-500 font-bold text-sm">Player 3</div>
+                            <input type="text" id="squad_player3_name" placeholder="Player Name *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                            <input type="text" id="squad_player3_ffname" placeholder="FF Name *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                            <input type="text" id="squad_player3_ffid" placeholder="FF ID *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                        </div>
+                        <div class="space-y-3">
+                            <div class="text-orange-500 font-bold text-sm">Player 4</div>
+                            <input type="text" id="squad_player4_name" placeholder="Player Name *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                            <input type="text" id="squad_player4_ffname" placeholder="FF Name *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                            <input type="text" id="squad_player4_ffid" placeholder="FF ID *" class="w-full rounded px-4 py-2 text-sm font-medium">
+                        </div>
+                    </div>
+                    <button onclick="addSquad()" class="mt-4 btn bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded text-sm w-full">
+                        ADD SQUAD
+                    </button>
+                </div>
+            </div>
+
+            <!-- Registered Squads -->
+            <div class="card rounded-lg p-6 shadow-xl mb-6">
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                    <span class="text-orange-500 mr-2">🛡️</span>
+                    Registered Squads
+                </h3>
+                
+                <div id="emptySquadsState" class="text-center py-10">
+                    <div class="text-gray-600 text-4xl mb-3">🛡️</div>
+                    <p class="text-gray-400 text-base font-semibold">No Squads Registered Yet</p>
+                </div>
+
+                <div id="squadsList" class="space-y-4 max-h-[600px] overflow-y-auto scrollbar-custom" style="display: none;">
+                </div>
+            </div>
+
+            <!-- Registered Individual Players -->
+            <div class="card rounded-lg p-6 shadow-xl">
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                    <span class="text-orange-500 mr-2">👤</span>
+                    Individual Players
+                </h3>
+                
+                <div id="emptyState" class="text-center py-10">
+                    <div class="text-gray-600 text-4xl mb-3">👤</div>
+                    <p class="text-gray-400 text-base font-semibold">No Individual Players Registered Yet</p>
+                </div>
+
+                <div id="playersList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto scrollbar-custom" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeQRModal()">&times;</span>
+            <h2 class="text-2xl font-bold text-white mb-4">Player Registration QR Code</h2>
+            <p class="text-gray-400 mb-4">Players scan with their phone to register</p>
+            <div id="qrcode" class="flex justify-center mb-4 bg-white p-4 rounded-lg"></div>
+            <div class="text-center">
+                <p class="text-sm text-gray-400 mb-2">Registration Link:</p>
+                <input type="text" id="registrationLink" readonly class="w-full rounded px-4 py-2 text-sm font-mono text-center mb-3" onclick="this.select()">
+                <button onclick="copyRegistrationLink()" class="btn bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded text-sm w-full">
+                    COPY LINK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Registration Page (Mobile View) -->
+    <div id="registrationView" style="display: none;">
+        <div class="bg-gradient"></div>
+        <div class="content p-4 md:p-6 lg:p-8">
+            <div class="max-w-md mx-auto mt-10">
+                <div class="card rounded-xl p-8 shadow-2xl" style="backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <!-- Header -->
+                    <div class="text-center mb-8">
+                        <h1 class="text-4xl font-bold text-white mb-3" style="letter-spacing: 1px;">
+                            <span class="text-orange-500" style="text-shadow: 0 0 20px rgba(255, 107, 0, 0.5);">FREE FIRE</span>
+                            <span style="display: block; font-size: 1.75rem; margin-top: 0.25rem;">TOURNAMENT</span>
+                        </h1>
+                        <div style="width: 60px; height: 3px; background: linear-gradient(90deg, transparent, #ff6b00, transparent); margin: 0 auto 1rem;"></div>
+                        <p class="text-gray-300 text-sm" style="letter-spacing: 0.5px;">Player Registration</p>
+                    </div>
+                    
+                    <form id="registrationForm" class="space-y-5">
+                        <!-- Registration Type Selection -->
+                        <div>
+                            <label class="text-gray-300 text-sm font-medium block mb-2" style="letter-spacing: 0.3px;">
+                                Registration Type <span class="text-orange-500">*</span>
+                            </label>
+                            <select 
+                                id="regType" 
+                                required 
+                                class="w-full rounded-lg px-4 py-3 text-sm font-medium"
+                                style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white;"
+                                onchange="toggleRegistrationFields()"
+                            >
+                                <option value="individual">Individual Player</option>
+                                <option value="squad">Squad (4 Players)</option>
+                            </select>
+                        </div>
+
+                        <!-- Squad Name (only for squads) -->
+                        <div id="squadNameField" style="display: none;">
+                            <label class="text-gray-300 text-sm font-medium block mb-2" style="letter-spacing: 0.3px;">
+                                Squad Name <span class="text-orange-500">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="regSquadName" 
+                                class="w-full rounded-lg px-4 py-3 text-sm font-medium"
+                                style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white;"
+                                placeholder="Enter squad name"
+                            >
+                        </div>
+
+                        <!-- Player Fields Container -->
+                        <div id="playersContainer">
+                            <div class="player-section" data-player="1">
+                                <div class="text-orange-500 font-bold text-sm mb-2" id="playerLabel1">Your Details</div>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="text-gray-300 text-xs font-medium block mb-1">Player Name</label>
+                                        <input 
+                                            type="text" 
+                                            id="regPlayerName1" 
+                                            required 
+                                            class="w-full rounded-lg px-4 py-2 text-sm font-medium"
+                                            style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white;"
+                                            placeholder="Enter name"
+                                        >
+                                    </div>
+                                    <div>
+                                        <label class="text-gray-300 text-xs font-medium block mb-1">FF Name</label>
+                                        <input 
+                                            type="text" 
+                                            id="regFFName1" 
+                                            required 
+                                            class="w-full rounded-lg px-4 py-2 text-sm font-medium"
+                                            style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white;"
+                                            placeholder="Enter FF name"
+                                        >
+                                    </div>
+                                    <div>
+                                        <label class="text-gray-300 text-xs font-medium block mb-1">FF ID</label>
+                                        <input 
+                                            type="text" 
+                                            id="regFFId1" 
+                                            required 
+                                            class="w-full rounded-lg px-4 py-2 text-sm font-medium"
+                                            style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white;"
+                                            placeholder="Enter FF ID"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button 
+                            type="submit" 
+                            class="btn text-white font-bold py-3 px-6 rounded-lg text-sm w-full mt-6"
+                            style="background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%); box-shadow: 0 4px 15px rgba(255, 107, 0, 0.3); transition: all 0.3s ease; letter-spacing: 1px;"
+                        >
+                            <span id="submitBtn">REGISTER NOW</span>
+                        </button>
+                    </form>
+                    
+                    <!-- Success Message -->
+                    <div 
+                        id="successMessage" 
+                        style="display: none;" 
+                        class="mt-6 p-6 rounded-xl text-center"
+                    >
+                        <div class="text-5xl mb-3" style="color: #22c55e;">✓</div>
+                        <div class="text-2xl font-bold mb-2 text-white" style="letter-spacing: 0.5px;">Registration Successful!</div>
+                        <p class="text-sm text-gray-300 mb-3">You're all set for the tournament</p>
+                        <div style="width: 40px; height: 2px; background: #22c55e; margin: 0 auto 0.75rem;"></div>
+                        <p class="text-xs text-gray-400" style="letter-spacing: 0.3px;">You can close this page now</p>
+                    </div>
+                    
+                    <!-- Error Message -->
+                    <div 
+                        id="errorMessage" 
+                        style="display: none;" 
+                        class="mt-6 p-4 rounded-xl text-center bg-red-900/20 border-2 border-red-500/50 text-red-300"
+                    ></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let players = [];
+        let squads = [];
+        let currentRegistrationType = 'individual';
+        
+        // Smart API detection for ngrok/localhost/production
+        function getAPIBase() {
+            if (window.location.hostname.includes('ngrok')) {
+                return `${window.location.protocol}//${window.location.hostname}/api`;
+            }
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                return 'http://localhost:9000/api';
+            }
+            return `${window.location.protocol}//${window.location.hostname}/api`;
+        }
+        
+        const API_BASE = getAPIBase();
+        console.log('🔗 API Base URL:', API_BASE);
+
+        // Registration type toggle for admin panel
+        function setRegistrationType(type) {
+            currentRegistrationType = type;
+            const individualBtn = document.getElementById('individualBtn');
+            const squadBtn = document.getElementById('squadBtn');
+            const individualForm = document.getElementById('individualForm');
+            const squadForm = document.getElementById('squadForm');
+
+            if (type === 'individual') {
+                individualBtn.classList.remove('bg-gray-700');
+                individualBtn.classList.add('bg-orange-600');
+                squadBtn.classList.remove('bg-orange-600');
+                squadBtn.classList.add('bg-gray-700');
+                individualForm.style.display = 'grid';
+                squadForm.style.display = 'none';
+            } else {
+                squadBtn.classList.remove('bg-gray-700');
+                squadBtn.classList.add('bg-orange-600');
+                individualBtn.classList.remove('bg-orange-600');
+                individualBtn.classList.add('bg-gray-700');
+                individualForm.style.display = 'none';
+                squadForm.style.display = 'block';
+            }
+        }
+
+        // Toggle registration fields for mobile form
+        function toggleRegistrationFields() {
+            const regType = document.getElementById('regType').value;
+            const squadNameField = document.getElementById('squadNameField');
+            const playersContainer = document.getElementById('playersContainer');
+            const playerLabel1 = document.getElementById('playerLabel1');
+
+            if (regType === 'squad') {
+                squadNameField.style.display = 'block';
+                document.getElementById('regSquadName').required = true;
+                playerLabel1.textContent = 'Player 1 Details';
+                
+                // Add 3 more player fields
+                if (playersContainer.children.length === 1) {
+                    for (let i = 2; i <= 4; i++) {
+                        const playerSection = document.createElement('div');
+                        playerSection.className = 'player-section mt-4';
+                        playerSection.setAttribute('data-player', i);
+                        playerSection.innerHTML = `
+                            <div class="text-orange-500 font-bold text-sm mb-2">Player ${i} Details</div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="text-gray-300 text-xs font-medium block mb-1">Player Name</label>
+                                    <input 
+                                        type="text" 
+                                        id="regPlayerName${i}" 
+                                        required 
+                                        class="w-full rounded-lg px-4 py-2 text-sm font-medium"
+                                        style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white;"
+                                        placeholder="Enter name"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="text-gray-300 text-xs font-medium block mb-1">FF Name</label>
+                                    <input 
+                                        type="text" 
+                                        id="regFFName${i}" 
+                                        required 
+                                        class="w-full rounded-lg px-4 py-2 text-sm font-medium"
+                                        style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white;"
+                                        placeholder="Enter FF name"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="text-gray-300 text-xs font-medium block mb-1">FF ID</label>
+                                    <input 
+                                        type="text" 
+                                        id="regFFId${i}" 
+                                        required 
+                                        class="w-full rounded-lg px-4 py-2 text-sm font-medium"
+                                        style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: white;"
+                                        placeholder="Enter FF ID"
+                                    >
+                                </div>
+                            </div>
+                        `;
+                        playersContainer.appendChild(playerSection);
+                    }
+                }
+            } else {
+                squadNameField.style.display = 'none';
+                document.getElementById('regSquadName').required = false;
+                playerLabel1.textContent = 'Your Details';
+                
+                // Remove extra player fields
+                while (playersContainer.children.length > 1) {
+                    playersContainer.removeChild(playersContainer.lastChild);
+                }
+            }
+        }
+
+        // Check if this is registration mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const isRegisterMode = urlParams.get('register');
+        
+        if (isRegisterMode === 'true') {
+            showRegistrationForm();
+        } else {
+            window.onload = function() {
+                loadPlayers();
+                loadSquads();
+            };
+        }
+
+        function showRegistrationForm() {
+            const isRegistered = localStorage.getItem('ffTournamentRegistered');
+            
+            document.querySelector('.content').style.display = 'none';
+            document.getElementById('registrationView').style.display = 'block';
+
+            if (isRegistered) {
+                document.getElementById('registrationForm').style.display = 'none';
+                document.getElementById('successMessage').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.innerHTML = '<div class="loading"></div>';
+                
+                const regType = document.getElementById('regType').value;
+                
+                try {
+                    if (regType === 'individual') {
+                        const playerData = {
+                            playerName: document.getElementById('regPlayerName1').value.trim(),
+                            ffName: document.getElementById('regFFName1').value.trim(),
+                            ffId: document.getElementById('regFFId1').value.trim()
+                        };
+                        
+                        const response = await fetch(`${API_BASE}/kills/playerRegister`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(playerData)
+                        });
+                        
+                        if (!response.ok) throw new Error('Registration failed');
+                    } else {
+                        const squadData = {
+                            squadName: document.getElementById('regSquadName').value.trim(),
+                            players: []
+                        };
+                        
+                        for (let i = 1; i <= 4; i++) {
+                            squadData.players.push({
+                                playerName: document.getElementById(`regPlayerName${i}`).value.trim(),
+                                ffName: document.getElementById(`regFFName${i}`).value.trim(),
+                                ffId: document.getElementById(`regFFId${i}`).value.trim()
+                            });
+                        }
+                        
+                        const response = await fetch(`${API_BASE}/kills/squadRegister`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(squadData)
+                        });
+                        
+                        if (!response.ok) throw new Error('Squad registration failed');
+                    }
+                    
+                    localStorage.setItem('ffTournamentRegistered', 'true');
+                    document.getElementById('registrationForm').style.display = 'none';
+                    document.getElementById('successMessage').style.display = 'block';
+                } catch (error) {
+                    document.getElementById('errorMessage').textContent = 'Error: ' + error.message;
+                    document.getElementById('errorMessage').style.display = 'block';
+                    submitBtn.textContent = 'REGISTER NOW';
+                }
+            });
+        }
+
+        async function loadPlayers() {
+            try {
+                const response = await fetch(`${API_BASE}/kills/getPlayers`);
+                const data = await response.json();
+                
+                players = data.map(player => ({
+                    _id: player._id,
+                    playerName: player.playerName,
+                    ffName: player.ffName,
+                    ffId: player.ffId
+                }));
+                
+                renderPlayersList();
+                updateStats();
+            } catch (error) {
+                console.error('Error loading players:', error);
+            }
+        }
+
+        async function loadSquads() {
+            try {
+                const response = await fetch(`${API_BASE}/kills/getSquads`);
+                const data = await response.json();
+                
+                squads = data;
+                renderSquadsList();
+                updateStats();
+            } catch (error) {
+                console.error('Error loading squads:', error);
+            }
+        }
+
+        function renderPlayersList() {
+            const listDiv = document.getElementById('playersList');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (players.length === 0) {
+                listDiv.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            listDiv.style.display = 'grid';
+            
+            listDiv.innerHTML = players.map((player, index) => `
+                <div class="player-card rounded-lg p-4">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                            <div class="text-orange-500 font-bold text-xs mb-1">#${index + 1}</div>
+                            <div class="text-white font-bold text-lg">${player.playerName}</div>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="text-gray-400 text-sm">
+                            <span class="text-gray-500">FF Name:</span> ${player.ffName}
+                        </div>
+                        <div class="text-gray-400 text-sm font-mono">
+                            <span class="text-gray-500">FF ID:</span> ${player.ffId}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderSquadsList() {
+            const listDiv = document.getElementById('squadsList');
+            const emptyState = document.getElementById('emptySquadsState');
+            
+            if (squads.length === 0) {
+                listDiv.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            listDiv.style.display = 'block';
+            
+            listDiv.innerHTML = squads.map((squad, index) => `
+                <div class="card rounded-lg p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-orange-500 font-bold text-xs mb-1">SQUAD #${index + 1}</div>
+                            <div class="text-white font-bold text-2xl">${squad.squadName}</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        ${squad.players.map((player, pIndex) => `
+                            <div class="player-card rounded-lg p-3">
+                                <div class="text-orange-400 font-bold text-xs mb-2">Player ${pIndex + 1}</div>
+                                <div class="text-white font-bold text-sm mb-1">${player.playerName}</div>
+                                <div class="text-gray-400 text-xs">
+                                    <span class="text-gray-500">FF:</span> ${player.ffName}
+                                </div>
+                                <div class="text-gray-400 text-xs font-mono">
+                                    <span class="text-gray-500">ID:</span> ${player.ffId}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('totalSquads').textContent = squads.length;
+            document.getElementById('totalIndividual').textContent = players.length;
+            const totalPlayers = players.length + (squads.length * 4);
+            document.getElementById('totalRegistered').textContent = totalPlayers;
+        }
+
+        async function addPlayer() {
+            const playerName = document.getElementById('playerName').value.trim();
+            const ffName = document.getElementById('ffName').value.trim();
+            const ffId = document.getElementById('ffId').value.trim();
+
+            if (!playerName || !ffName || !ffId) {
+                showAlert('Please fill in all player details', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/kills/playerRegister`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playerName, ffName, ffId })
+                });
+
+                if (response.ok) {
+                    document.getElementById('playerName').value = '';
+                    document.getElementById('ffName').value = '';
+                    document.getElementById('ffId').value = '';
+                    
+                    loadPlayers();
+                    showAlert('Player added successfully!', 'success');
+                } else {
+                    throw new Error('Failed to add player');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function addSquad() {
+            const squadName = document.getElementById('squadName').value.trim();
+            const players = [];
+
+            for (let i = 1; i <= 4; i++) {
+                const playerName = document.getElementById(`squad_player${i}_name`).value.trim();
+                const ffName = document.getElementById(`squad_player${i}_ffname`).value.trim();
+                const ffId = document.getElementById(`squad_player${i}_ffid`).value.trim();
+
+                if (!playerName || !ffName || !ffId) {
+                    showAlert('Please fill in all details for all 4 players', 'error');
+                    return;
+                }
+
+                players.push({ playerName, ffName, ffId });
+            }
+
+            if (!squadName) {
+                showAlert('Please enter squad name', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/kills/squadRegister`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ squadName, players })
+                });
+
+                if (response.ok) {
+                    document.getElementById('squadName').value = '';
+                    for (let i = 1; i <= 4; i++) {
+                        document.getElementById(`squad_player${i}_name`).value = '';
+                        document.getElementById(`squad_player${i}_ffname`).value = '';
+                        document.getElementById(`squad_player${i}_ffid`).value = '';
+                    }
+                    
+                    loadSquads();
+                    showAlert('Squad registered successfully!', 'success');
+                } else {
+                    throw new Error('Failed to register squad');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
+
+        function showQRModal() {
+            const modal = document.getElementById('qrModal');
+            const qrDiv = document.getElementById('qrcode');
+            qrDiv.innerHTML = '';
+            
+            const baseUrl = window.location.origin + window.location.pathname;
+            const url = `${baseUrl}?register=true`;
+            document.getElementById('registrationLink').value = url;
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'text-green-400 text-xs mb-3 p-2 bg-green-900/20 rounded text-center';
+            if (window.location.hostname.includes('ngrok')) {
+                infoDiv.innerHTML = `✅ Using ngrok URL - Accessible from any device!`;
+            } else if (window.location.hostname === 'localhost') {
+                infoDiv.innerHTML = `⚠️ Using localhost - Only works on this device<br>
+                <small class="text-gray-400">Use ngrok for remote access</small>`;
+            }
+            qrDiv.parentElement.insertBefore(infoDiv, qrDiv);
+            
+            new QRCode(qrDiv, {
+                text: url,
+                width: 256,
+                height: 256,
+                colorDark: "#ff4400",
+                colorLight: "#ffffff",
+            });
+            
+            modal.style.display = 'block';
+        }
+
+        function closeQRModal() {
+            document.getElementById('qrModal').style.display = 'none';
+        }
+
+        function copyRegistrationLink() {
+            const input = document.getElementById('registrationLink');
+            input.select();
+            document.execCommand('copy');
+            showAlert('Link copied!', 'success');
+        }
+
+        async function importXLSX(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                let importedPlayers = 0;
+                let importedSquads = 0;
+
+                for (const row of jsonData) {
+                    const type = (row['Type'] || row['type'] || '').toLowerCase();
+                    
+                    if (type === 'squad') {
+                        // Squad registration
+                        const squadName = row['Squad Name'] || row['squadName'] || '';
+                        const players = [];
+                        
+                        for (let i = 1; i <= 4; i++) {
+                            const playerName = row[`Player${i} Name`] || row[`player${i}Name`] || '';
+                            const ffName = row[`Player${i} FF Name`] || row[`player${i}FFName`] || '';
+                            const ffId = row[`Player${i} FF ID`] || row[`player${i}FFID`] || '';
+                            
+                            if (playerName && ffName && ffId) {
+                                players.push({ playerName, ffName, ffId });
+                            }
+                        }
+                        
+                        if (squadName && players.length === 4) {
+                            try {
+                                await fetch(`${API_BASE}/kills/squadRegister`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ squadName, players })
+                                });
+                                importedSquads++;
+                            } catch (error) {
+                                console.error('Error importing squad:', error);
+                            }
+                        }
+                    } else {
+                        // Individual player registration
+                        const playerName = row['Player Name'] || row['playerName'] || '';
+                        const ffName = row['FF Name'] || row['ffName'] || '';
+                        const ffId = row['FF ID'] || row['ffId'] || '';
+                        
+                        if (playerName && ffName && ffId) {
+                            try {
+                                await fetch(`${API_BASE}/kills/playerRegister`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ playerName, ffName, ffId })
+                                });
+                                importedPlayers++;
+                            } catch (error) {
+                                console.error('Error importing player:', error);
+                            }
+                        }
+                    }
+                }
+                
+                loadPlayers();
+                loadSquads();
+                showAlert(`Imported ${importedPlayers} players and ${importedSquads} squads!`, 'success');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 3000);
+        }
+
+        window.onclick = function(event) {
+            const qrModal = document.getElementById('qrModal');
+            if (event.target == qrModal) {
+                closeQRModal();
+            }
+        }
+    </script>
+</body>
+</html>

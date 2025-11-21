@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Players — Free Fire Tournament</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/feather-icons"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+<style>
+  body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg,#0f0f0f,#1a1a1a); color: #eee; overflow: hidden;}
+  .fade-in { animation: fadeIn 0.5s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to {opacity:1; transform:none;} }
+  .glass { background: rgba(20,20,20,0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+  .hover-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+  .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(255,255,255,0.15); }
+  .table-scroll { max-height: 450px; overflow:auto; }
+  .drop-hover { border-color: #f59e0b !important; box-shadow: 0 0 15px #f59e0b; background: rgba(255,159,10,0.1); }
+  table tr:hover { background: rgba(255,255,255,0.05); }
+  .btn-glow { position: relative; overflow: hidden; transition: 0.3s; }
+  .btn-glow::after { content: ''; position: absolute; top:0; left:-75%; width:50%; height:100%; background: rgba(255,255,255,0.2); transform: skewX(-25deg); transition: 0.7s; }
+  .btn-glow:hover::after { left:125%; }
+  .input-focus:focus { outline: none; border-color: #f59e0b; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Navbar -->
+<nav class="flex flex-col md:flex-row items-center justify-between px-6 py-4 border-b border-gray-700">
+  <div class="flex items-center gap-3">
+    <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center font-bold text-white text-xl shadow-lg">FF</div>
+    <div>
+      <h1 class="text-2xl font-bold tracking-wide">Free Fire — Players</h1>
+      <p class="text-sm text-gray-400">Register & manage players (name, phone, Free Fire ID)</p>
+    </div>
+  </div>
+  <div class="flex gap-3 mt-3 md:mt-0">
+    <a href="/" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition">Home</a>
+    <a href="/conductors.html" class="px-4 py-2 rounded-lg bg-gradient-to-tr from-red-500 to-orange-500 hover:from-orange-500 hover:to-red-500 transition">Conductors</a>
+  </div>
+</nav>
+
+<main class="max-w-7xl mx-auto px-4 py-6">
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Add Player Form -->
+    <div class="glass rounded-2xl shadow-lg fade-in hover-card overflow-hidden">
+      <h2 class="text-xl font-bold p-4 border-b border-gray-700">Add Player</h2>
+      <div class="p-4 space-y-3">
+        <input id="p_name" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 input-focus" placeholder="Full name" />
+        <input id="p_phone" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 input-focus" placeholder="Phone number" />
+        <input id="p_ffid" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 input-focus" placeholder="Free Fire ID" />
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button id="btnAdd" class="flex-1 py-2 rounded-xl bg-gradient-to-tr from-red-500 to-orange-500 btn-glow flex justify-center items-center gap-2"><i data-feather="plus"></i> Add Player</button>
+          <button id="btnClear" class="py-2 px-3 rounded-xl border border-gray-700 flex justify-center items-center gap-2"><i data-feather="x"></i> Clear</button>
+        </div>
+
+        <!-- Drag & Drop -->
+        <div id="dropArea" class="w-full p-6 border-2 border-dashed border-gray-600 rounded-xl text-center cursor-pointer hover:border-orange-400 transition-colors bg-gray-800">
+          <p class="text-gray-400 mb-1">Drag & Drop Excel file here</p>
+          <p class="text-gray-500 text-sm">or click to select</p>
+          <input type="file" id="filePlayers" accept=".xlsx,.xls,.csv" class="hidden">
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 mt-3">
+          <button id="btnImport" class="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 flex justify-center items-center gap-2"><i data-feather="upload"></i> Upload</button>
+          <button id="btnExport" class="py-2 px-3 rounded-xl bg-green-600 hover:bg-green-700 flex justify-center items-center gap-2"><i data-feather="download"></i> Download</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Players Table -->
+    <div class="glass rounded-2xl shadow-lg fade-in hover-card lg:col-span-2 overflow-hidden">
+      <div class="flex flex-col md:flex-row justify-between p-4 border-b border-gray-700 gap-3 bg-gray-800">
+        <div>
+          <h2 class="text-xl font-bold">Players Directory</h2>
+          <p class="text-sm text-gray-400">Search, edit, delete</p>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-start sm:items-center">
+          <input id="searchPlayer" placeholder="Search by name / phone / ffid" class="p-2 rounded-xl bg-gray-800 border border-gray-700 input-focus flex-1">
+          <button id="btnSearch" class="py-2 px-4 rounded-xl bg-gray-700 hover:bg-gray-600 flex items-center gap-2"><i data-feather="search"></i> Search</button>
+          <button id="btnRefresh" class="py-2 px-4 rounded-xl border border-gray-700 flex items-center gap-2"><i data-feather="refresh-ccw"></i> Refresh</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto table-scroll">
+        <table class="min-w-full text-left">
+          <thead class="sticky top-0 bg-gray-900/90 text-gray-400">
+            <tr>
+              <th class="px-3 py-2">Name</th>
+              <th class="px-3 py-2">Phone</th>
+              <th class="px-3 py-2">Free Fire ID</th>
+              <th class="px-3 py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="playersTable" class="divide-y divide-gray-700"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<!-- Edit Modal -->
+<div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden">
+  <div class="bg-gray-900 rounded-xl p-6 w-full max-w-md shadow-xl">
+    <h3 class="text-lg font-semibold mb-3">Edit Player</h3>
+    <input id="edit_name" class="w-full mb-2 p-3 rounded-xl bg-gray-800 border border-gray-700 input-focus" />
+    <input id="edit_phone" class="w-full mb-2 p-3 rounded-xl bg-gray-800 border border-gray-700 input-focus" />
+    <input id="edit_ffid" class="w-full mb-4 p-3 rounded-xl bg-gray-800 border border-gray-700 input-focus" />
+    <div class="flex gap-3 justify-end">
+      <button id="editCancel" class="px-4 py-2 rounded-xl border border-gray-700">Cancel</button>
+      <button id="editSave" class="px-4 py-2 rounded-xl bg-red-500">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  feather.replace();
+  const API = '/api/players';
+  function toast(msg,type='success'){Toastify({text:msg,duration:3000,gravity:"top",position:"right",backgroundColor:type==='error'?"#e74c3c":"#2ecc71"}).showToast();}
+  const qs = id => document.getElementById(id);
+
+  const btnAdd = qs('btnAdd'), btnClear = qs('btnClear'), btnImport = qs('btnImport'), btnExport = qs('btnExport');
+  const btnSearch = qs('btnSearch'), btnRefresh = qs('btnRefresh');
+  const filePlayers = qs('filePlayers');
+  const playersTable = qs('playersTable');
+  const searchPlayer = qs('searchPlayer');
+
+  async function loadPlayers(query=''){
+    try {
+      let url = API;
+      if(query) url += '?search=' + encodeURIComponent(query);
+      const res = await fetch(url);
+      const list = await res.json();
+      renderPlayers(list);
+    } catch(err){ toast('Failed to load players','error'); console.error(err); }
+  }
+
+  function renderPlayers(list){
+    playersTable.innerHTML = list.map(p=>`
+      <tr class="hover:bg-slate-800/60 transition">
+        <td class="px-3 py-3">${escapeHtml(p.name||'')}</td>
+        <td class="px-3 py-3">${escapeHtml(p.phone||'')}</td>
+        <td class="px-3 py-3">${escapeHtml(p.ffid||p.freefireId||'')}</td>
+        <td class="px-3 py-3 flex gap-2">
+          <button data-id="${p._id}" class="editBtn px-3 py-1 rounded-md bg-slate-700 flex items-center gap-1" title="Edit"><i data-feather="edit"></i></button>
+          <button data-id="${p._id}" class="delBtn px-3 py-1 rounded-md bg-rose-600 flex items-center gap-1" title="Delete"><i data-feather="trash-2"></i></button>
+        </td>
+      </tr>`).join('');
+    attachRowEvents();
+    feather.replace();
+  }
+
+  function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+  btnAdd.addEventListener('click', async()=>{
+    const name=qs('p_name').value.trim(), phone=qs('p_phone').value.trim(), ffid=qs('p_ffid').value.trim();
+    if(!name||!phone||!ffid) return toast('Please fill all fields','error');
+    try{
+      const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,ffid})});
+      const data=await res.json();
+      toast(data.message||'Player added');
+      qs('p_name').value=''; qs('p_phone').value=''; qs('p_ffid').value='';
+      loadPlayers();
+    }catch(err){ toast('Failed to add player','error'); console.error(err); }
+  });
+
+  btnClear.addEventListener('click',()=>{ qs('p_name').value=''; qs('p_phone').value=''; qs('p_ffid').value=''; });
+
+  btnImport.addEventListener('click', async()=>{
+    const file=filePlayers.files[0]; if(!file) return toast('Choose a file first','error');
+    const fd=new FormData(); fd.append('file',file);
+    try{ const res = await fetch(API+'/import',{method:'POST',body:fd}); const data=await res.json(); toast(data.message||'Imported'); filePlayers.value=''; loadPlayers(); }
+    catch(err){ toast('Import failed','error'); console.error(err); }
+  });
+
+  btnExport.addEventListener('click',()=>window.open(API+'/export','_blank'));
+
+  btnSearch.addEventListener('click',()=>loadPlayers(searchPlayer.value.trim()));
+  btnRefresh.addEventListener('click',()=>{ searchPlayer.value=''; loadPlayers(); });
+
+  function attachRowEvents(){
+    document.querySelectorAll('.delBtn').forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.id; if(!confirm('Delete this player?')) return;
+      try{ const r = await fetch(API+'/'+id,{method:'DELETE'}); const d=await r.json(); toast(d.message||'Deleted'); loadPlayers(searchPlayer.value.trim()); }
+      catch(e){ toast('Delete failed','error'); console.error(e); }
+    });
+
+    document.querySelectorAll('.editBtn').forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.id;
+      try{ const arr=await(await fetch(API)).json(); const found=arr.find(x=>x._id===id); if(!found){ toast('Player not found','error'); return;} openEditModal(found); }
+      catch(err){ toast('Fetch failed','error'); console.error(err); }
+    });
+  }
+
+  const editModal = qs('editModal'), editName = qs('edit_name'), editPhone = qs('edit_phone'), editFfid = qs('edit_ffid');
+  let currentEditId=null;
+
+  function openEditModal(player){
+    currentEditId=player._id; editName.value=player.name||''; editPhone.value=player.phone||''; editFfid.value=player.ffid||player.freefireId||'';
+    editModal.classList.remove('hidden');
+  }
+
+  qs('editCancel').addEventListener('click',()=>{ editModal.classList.add('hidden'); currentEditId=null; });
+  qs('editSave').addEventListener('click', async()=>{
+    const payload={ name:editName.value.trim(), phone:editPhone.value.trim(), ffid:editFfid.value.trim() };
+    if(!payload.name||!payload.phone) return toast('Name & phone required','error');
+    try{
+      const res = await fetch(API+'/'+currentEditId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const data=await res.json(); toast(data.message||'Updated'); editModal.classList.add('hidden'); currentEditId=null;
+      loadPlayers(searchPlayer.value.trim());
+    }catch(err){ toast('Update failed','error'); console.error(err); }
+  });
+
+  // Drag & drop
+  const dropArea = qs('dropArea');
+  dropArea.addEventListener('click',()=>filePlayers.click());
+  dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('drop-hover'); });
+  dropArea.addEventListener('dragleave', ()=>dropArea.classList.remove('drop-hover'));
+  dropArea.addEventListener('drop', e=>{ e.preventDefault(); dropArea.classList.remove('drop-hover'); filePlayers.files = e.dataTransfer.files; });
+
+  loadPlayers();
+</script>
+
+</body>
+</html>

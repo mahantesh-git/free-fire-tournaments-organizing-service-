@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Fire Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Exo+2:wght@400;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Exo 2', sans-serif;
+        }
+        
+        body {
+            background: #0b0e17;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: linear-gradient(180deg, #0b0e17 0%, #1a1d2e 50%, #0b0e17 100%);
+        }
+        
+        .content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .card {
+            background: rgba(20, 24, 38, 0.95);
+            border: 1px solid rgba(255, 68, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .accent-border {
+            border-left: 3px solid #ff4400;
+        }
+        
+        .top-player {
+            background: linear-gradient(90deg, rgba(255, 215, 0, 0.08), transparent);
+            border-left: 3px solid #ffd700;
+        }
+        
+        input[type="text"], input[type="number"], select {
+            background: rgba(30, 35, 50, 0.8);
+            border: 1px solid rgba(255, 68, 0, 0.2);
+            color: #fff;
+            transition: all 0.2s ease;
+        }
+        
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: #ff4400;
+            background: rgba(30, 35, 50, 1);
+        }
+        
+        .btn {
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+        
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 8px;
+            background: rgba(255, 68, 0, 0.1);
+            border: 1px solid rgba(255, 68, 0, 0.3);
+            color: #ff6633;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .rank-badge.top-3 {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+            border-color: #ffd700;
+            color: #ffd700;
+            font-weight: 800;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-track {
+            background: rgba(30, 35, 50, 0.5);
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+            background: rgba(255, 68, 0, 0.4);
+            border-radius: 4px;
+        }
+        
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 68, 0, 0.6);
+        }
+        
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        thead th {
+            position: sticky;
+            top: 0;
+            background: rgba(20, 24, 38, 0.98);
+            z-index: 10;
+        }
+        
+        tbody tr {
+            transition: background 0.15s ease;
+        }
+        
+        tbody tr:hover {
+            background: rgba(255, 68, 0, 0.05);
+        }
+        
+        .stat-item {
+            background: rgba(30, 35, 50, 0.6);
+            border: 1px solid rgba(255, 68, 0, 0.15);
+        }
+        
+        .delete-btn {
+            opacity: 0.6;
+            transition: all 0.2s ease;
+        }
+        
+        .delete-btn:hover {
+            opacity: 1;
+            color: #ef4444;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            background: rgba(20, 24, 38, 0.98);
+            margin: 5% auto;
+            padding: 30px;
+            border: 2px solid rgba(255, 68, 0, 0.3);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+
+        .close:hover {
+            color: #ff4400;
+        }
+
+        .top-players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .top-player-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.05));
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .checkbox-player {
+            margin-right: 8px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .alert-success {
+            background: #10b981;
+        }
+
+        .alert-error {
+            background: #ef4444;
+        }
+
+        .alert-warning {
+            background: #f59e0b;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .game-status-badge {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .game-status-active {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1));
+            border: 2px solid #10b981;
+            color: #10b981;
+        }
+
+        .game-status-inactive {
+            background: rgba(107, 114, 128, 0.2);
+            border: 2px solid #6b7280;
+            color: #9ca3af;
+        }
+
+        .lock-icon {
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        .scoreboard-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            color: white;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .scoreboard-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            background: linear-gradient(135deg, #059669, #047857);
+        }
+
+        .room-nav-btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 68, 0, 0.3);
+            background: rgba(30, 35, 50, 0.8);
+            color: #fff;
+        }
+
+        .room-nav-btn:hover {
+            border-color: #ff4400;
+            background: rgba(255, 68, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .room-nav-btn.active {
+            background: linear-gradient(135deg, #ff4400, #ff6633);
+            border-color: #ff4400;
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 68, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    
+    <div class="content p-4 md:p-6 lg:p-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="card rounded-lg p-6 mb-6 shadow-xl">
+                <div class="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                        <h1 class="text-3xl md:text-4xl font-bold text-white mb-1">
+                            <span class="text-orange-500">ADMIN PANEL</span>
+                        </h1>
+                        <p class="text-gray-400 text-sm font-medium">Tournament Management & Score Entry</p>
+                    </div>
+                    
+                    <!-- Stats & Game Status -->
+                    <div class="flex gap-6 items-center flex-wrap">
+                        <a href="/scoreboard" target="_blank" class="scoreboard-link">
+                            <span>📺</span>
+                            <span>OPEN SCOREBOARD</span>
+                        </a>
+                        <div id="gameStatusBadge" class="game-status-badge game-status-inactive">
+                            <span class="lock-icon">🎮</span>
+                            <span id="gameStatusText">No Active Game</span>
+                        </div>
+                        <div class="stat-item rounded px-4 py-2">
+                            <div class="text-2xl font-bold text-white" id="totalPlayers">0</div>
+                            <div class="text-xs text-gray-400 uppercase">Players</div>
+                        </div>
+                        <div class="stat-item rounded px-4 py-2">
+                            <div class="text-2xl font-bold text-orange-500" id="totalKills">0</div>
+                            <div class="text-xs text-gray-400 uppercase">Total Kills</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="card rounded-lg p-5 mb-6 shadow-xl">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <button onclick="showTopPlayersModal()" class="btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded text-sm">
+                        TOP PLAYERS
+                    </button>
+                    <button onclick="generateRandomTeams()" id="randomTeamsBtn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded text-sm">
+                        RANDOM TEAMS
+                    </button>
+                    <button onclick="toggleTeamsView()" id="viewTeamsBtn" class="btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded text-sm" style="display: none;">
+                        👁️ VIEW TEAMS
+                    </button>
+                    <button onclick="endGame()" id="endGameBtn" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded text-sm" style="display: none;">
+                        END GAME
+                    </button>
+                    <button onclick="loadPlayers()" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded text-sm">
+                        REFRESH
+                    </button>
+                    <button onclick="showExportModal()" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded text-sm">
+                        EXPORT
+                    </button>
+                    <button onclick="clearAllData()" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded text-sm">
+                        CLEAR ALL
+                    </button>
+                </div>
+            </div>
+
+            <!-- Top Players Section -->
+            <div id="topPlayersSection" class="card rounded-lg p-5 mb-6 shadow-xl" style="display: none;">
+                <h2 class="text-2xl font-bold text-white mb-4">🏆 TOP PLAYERS</h2>
+                <div id="topPlayersContainer" class="top-players-grid"></div>
+            </div>
+
+            <!-- Room Navigation -->
+            <div id="roomNavigationSection" style="display: none;">
+                <div class="card rounded-lg p-5 mb-6 shadow-xl">
+                    <h2 class="text-2xl font-bold text-white mb-4">🎮 ROOM NAVIGATION</h2>
+                    <div id="roomNavButtons" class="flex flex-wrap gap-3"></div>
+                </div>
+            </div>
+
+            <!-- Random Teams Section -->
+            <div id="randomTeamsSection" style="display: none;">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-3xl font-bold text-white">🎲 RANDOM TEAMS - KILL ENTRY</h2>
+                </div>
+                <div id="randomTeamsContainer" class="space-y-6"></div>
+            </div>
+
+            <!-- Score Table -->
+            <div class="card rounded-lg shadow-xl overflow-hidden">
+                <div class="p-4 border-b border-gray-700">
+                    <h2 class="text-xl font-bold text-white">SCORE ENTRY TABLE</h2>
+                    <p class="text-gray-400 text-sm mt-1">Enter kills directly in the table below</p>
+                </div>
+                <div class="overflow-x-auto scrollbar-custom" style="max-height: 70vh;">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="p-4 text-gray-400 font-bold uppercase text-xs">Select</th>
+                                <th class="p-4 text-gray-400 font-bold uppercase text-xs">Rank</th>
+                                <th class="p-4 text-gray-400 font-bold uppercase text-xs">Player Name</th>
+                                <th class="p-4 text-gray-400 font-bold uppercase text-xs">FF Name</th>
+                                <th class="p-4 text-gray-400 font-bold uppercase text-xs">FF ID</th>
+                                <th class="p-4 text-center text-gray-400 font-bold uppercase text-xs">Bermuda</th>
+                                <th class="p-4 text-center text-gray-400 font-bold uppercase text-xs">Purgatory</th>
+                                <th class="p-4 text-center text-gray-400 font-bold uppercase text-xs">Kalahari</th>
+                                <th class="p-4 text-center text-orange-500 font-bold uppercase text-xs">Total</th>
+                                <th class="p-4 text-center text-gray-400 font-bold uppercase text-xs">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scoreTableBody" class="text-white">
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="emptyState" class="text-center py-20">
+                    <div class="text-gray-600 text-5xl mb-4">📊</div>
+                    <p class="text-gray-400 text-lg font-semibold">No Players Added</p>
+                    <p class="text-gray-500 text-sm mt-2">Add players to begin tracking scores</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+   <div id="exportModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="closeExportModal()">&times;</span>
+            <h2 class="text-2xl font-bold text-white mb-4">📤 Export Options</h2>
+            <p class="text-gray-400 text-sm mb-4">Choose your export format:</p>
+
+            <div class="space-y-3">
+                <!-- Singles Export -->
+                <div class="border-b border-gray-700 pb-3">
+                    <p class="text-white font-semibold mb-2 text-sm">📊 INDIVIDUAL PLAYERS</p>
+                    <div class="space-y-2">
+                        <button onclick="exportXLSX('singles')"
+                            class="btn bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-4 rounded text-sm w-full">
+                            Export All Singles (With Kills)
+                        </button>
+                        <button onclick="exportXLSX('top48')"
+                            class="btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded text-sm w-full">
+                            🏆 Export Top 48 Players
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Squads Export -->
+                <div class="border-b border-gray-700 pb-3" id="squadsExportSection">
+                    <p class="text-white font-semibold mb-2 text-sm">👥 TEAM ROSTERS</p>
+                    <div class="space-y-2">
+                        <button onclick="exportXLSX('squads-no-kills')"
+                            class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded text-sm w-full"
+                            id="exportSquadsNoKillsBtn">
+                            Export Teams (No Kills)
+                        </button>
+                        <button onclick="exportXLSX('squads-with-kills')"
+                            class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded text-sm w-full"
+                            id="exportSquadsWithKillsBtn">
+                            Export Teams (With Kills)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Room-wise Export -->
+                <div class="border-b border-gray-700 pb-3" id="roomsExportSection">
+                    <p class="text-white font-semibold mb-2 text-sm">🎮 ROOM-WISE</p>
+                    <button onclick="exportXLSX('rooms')"
+                        class="btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded text-sm w-full"
+                        id="exportRoomsBtn">
+                        Export by Rooms (Separate Sheets)
+                    </button>
+                </div>
+
+                <!-- Complete Export -->
+                <div class="pb-3">
+                    <p class="text-white font-semibold mb-2 text-sm">📑 COMPLETE PACKAGE</p>
+                    <button onclick="exportXLSX('complete')"
+                        class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded text-sm w-full"
+                        id="exportCompleteBtn">
+                        Export Everything (All Formats)
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="closeExportModal()"
+                class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded text-sm w-full mt-4">
+                CANCEL
+            </button>
+        </div>
+    </div>
+
+    <!-- Top Players Modal -->
+    <div id="topPlayersModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close" onclick="closeTopPlayersModal()">&times;</span>
+            <h2 class="text-2xl font-bold text-white mb-4">Select Top Players</h2>
+            <div class="mb-4">
+                <label class="text-gray-400 text-sm mb-2 block">Number of Top Players:</label>
+                <select id="topPlayersCount" class="rounded px-4 py-2 text-sm w-full">
+                    <option value="3">Top 3</option>
+                    <option value="5">Top 5</option>
+                    <option value="8">Top 8</option>
+                    <option value="10">Top 10</option>
+                    <option value="12">Top 12</option>
+                    <option value="48">Top 48</option>
+                    <option value="custom">Custom Selection</option>
+                </select>
+            </div>
+            <div id="customSelectionDiv" style="display: none;">
+                <p class="text-gray-400 text-sm mb-3">Select players to feature:</p>
+                <div id="playerSelectionList" class="max-h-96 overflow-y-auto scrollbar-custom"></div>
+            </div>
+            <div class="mt-4 flex gap-3">
+                <button onclick="applyTopPlayersSelection()" class="btn bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded text-sm flex-1">
+                    APPLY
+                </button>
+                <button onclick="closeTopPlayersModal()" class="btn bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded text-sm">
+                    CANCEL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let players = [];
+    let selectedTopPlayers = [];
+    let randomTeams = [];
+    let gameState = null;
+    let teamsVisible = false;
+    let currentRoomView = 'all';
+    let roomAssignments = {}; // ADDED: Missing variable declaration
+    
+    function getAPIBase() {
+        if (window.location.hostname.includes('ngrok')) {
+            return `${window.location.protocol}//${window.location.hostname}/api`;
+        }
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:9000/api';
+        }
+        return `${window.location.protocol}//${window.location.hostname}/api`;
+    }
+    
+    const API_BASE = getAPIBase();
+    console.log('🔗 API Base URL:', API_BASE);
+
+    window.onload = async function() {
+        await loadGameState();
+        await loadPlayers();
+    };
+
+    async function loadGameState() {
+        try {
+            const response = await fetch(`${API_BASE}/gamestate`);
+            const data = await response.json();
+            
+            if (data && data.active) {
+                gameState = data;
+                randomTeams = data.randomTeams || [];
+                selectedTopPlayers = data.selectedTopPlayers || [];
+                
+                console.log('✅ Game state loaded from database');
+                console.log('Teams loaded:', randomTeams.length);
+            }
+        } catch (error) {
+            console.error('Error loading game state:', error);
+        }
+    }
+
+    async function saveGameState() {
+        try {
+            const stateData = {
+                active: randomTeams.length > 0,
+                randomTeams: randomTeams,
+                selectedTopPlayers: selectedTopPlayers,
+                lastUpdated: new Date().toISOString()
+            };
+
+            const response = await fetch(`${API_BASE}/gamestate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(stateData)
+            });
+
+            const data = await response.json();
+            gameState = data;
+            console.log('✅ Game state saved to database');
+        } catch (error) {
+            console.error('Error saving game state:', error);
+            showAlert('Failed to save game state', 'error');
+        }
+    }
+
+    function updateGameStatusUI() {
+        const badge = document.getElementById('gameStatusBadge');
+        const statusText = document.getElementById('gameStatusText');
+        const endGameBtn = document.getElementById('endGameBtn');
+        const randomTeamsBtn = document.getElementById('randomTeamsBtn');
+        const viewTeamsBtn = document.getElementById('viewTeamsBtn');
+
+        if (randomTeams.length > 0) {
+            badge.className = 'game-status-badge game-status-active';
+            statusText.innerHTML = '<span class="lock-icon">🎮</span> Game Active';
+            viewTeamsBtn.style.display = 'block';
+            endGameBtn.style.display = 'block';
+            randomTeamsBtn.disabled = true;
+        } else {
+            badge.className = 'game-status-badge game-status-inactive';
+            statusText.innerHTML = '<span class="lock-icon">🎮</span> No Active Game';
+            endGameBtn.style.display = 'none';
+            viewTeamsBtn.style.display = 'none';
+            randomTeamsBtn.disabled = false;
+        }
+    }
+
+    async function endGame() {
+        const confirmed = confirm(
+            '⚠️ End Current Game?\n\n' +
+            'This will:\n' +
+            '• Clear all team assignments\n' +
+            '• Keep player scores intact\n\n' +
+            'Continue?'
+        );
+        
+        if (!confirmed) return;
+
+        try {
+            await fetch(`${API_BASE}/gamestate`, {
+                method: 'DELETE'
+            });
+
+            randomTeams = [];
+            gameState = null;
+            teamsVisible = false;
+            currentRoomView = 'all';
+
+            displayRandomTeams();
+            document.getElementById('roomNavigationSection').style.display = 'none';
+            updateGameStatusUI();
+            showAlert('Game ended successfully! Ready for new game 🎮', 'success');
+        } catch (error) {
+            console.error('Error ending game:', error);
+            showAlert('Failed to end game', 'error');
+        }
+    }
+
+    async function loadPlayers() {
+        try {
+            const response = await fetch(`${API_BASE}/kills/getPlayers`);
+            const data = await response.json();
+            
+            const playerDataMap = {};
+            data.forEach(player => {
+                playerDataMap[player._id] = {
+                    _id: player._id,
+                    playerName: player.playerName,
+                    ffName: player.ffName,
+                    ffId: player.ffId,
+                    map1: player.map1 || 0,
+                    map2: player.map2 || 0,
+                    map3: player.map3 || 0,
+                    total: player.total || 0
+                };
+            });
+            
+            if (randomTeams.length > 0 && gameState) {
+                console.log('🔄 Preserving team structure from saved state...');
+                console.log('Number of teams loaded:', randomTeams.length);
+                
+                const preservedTeams = [];
+                
+                for (let teamIndex = 0; teamIndex < randomTeams.length; teamIndex++) {
+                    const team = randomTeams[teamIndex];
+                    const preservedTeam = [];
+                    
+                    console.log(`\n--- Team ${teamIndex + 1} ---`);
+                    for (let playerIndex = 0; playerIndex < team.length; playerIndex++) {
+                        const savedPlayer = team[playerIndex];
+                        const updatedPlayer = playerDataMap[savedPlayer._id];
+                        
+                        if (updatedPlayer) {
+                            console.log(`  Position ${playerIndex + 1}: ${updatedPlayer.playerName} (${updatedPlayer._id})`);
+                            preservedTeam.push(updatedPlayer);
+                        } else {
+                            console.warn(`  Position ${playerIndex + 1}: Player not found in DB, using cached data`, savedPlayer);
+                            preservedTeam.push(savedPlayer);
+                        }
+                    }
+                    
+                    preservedTeams.push(preservedTeam);
+                }
+                
+                randomTeams = preservedTeams;
+                
+                console.log('\n✅ Teams preserved successfully!');
+                console.log('Final team structure:', randomTeams.map(t => t.map(p => p.playerName)));
+                
+                const playersInTeams = [];
+                randomTeams.forEach(team => {
+                    team.forEach(player => playersInTeams.push(player._id));
+                });
+                
+                players = data.map(player => {
+                    const inTeam = playersInTeams.includes(player._id);
+                    return { ...player, inTeam };
+                });
+            } else {
+                players = data;
+            }
+            
+            updateStats();
+            renderScoreTable();
+            updateGameStatusUI();
+            
+            if (randomTeams.length > 0) {
+                displayRandomTeams();
+                createRoomNavigation();
+            }
+            
+        } catch (error) {
+            console.error('Error loading players:', error);
+            showAlert('Failed to load players', 'error');
+        }
+    }
+
+    function calculateRoomDistribution(totalTeams) {
+        const TEAMS_PER_ROOM = 12;
+        const numRooms = Math.ceil(totalTeams / TEAMS_PER_ROOM);
+        
+        roomAssignments = {};
+        let teamIndex = 0;
+        
+        for (let room = 1; room <= numRooms; room++) {
+            roomAssignments[room] = [];
+            const teamsInThisRoom = Math.min(TEAMS_PER_ROOM, totalTeams - teamIndex);
+            
+            for (let i = 0; i < teamsInThisRoom; i++) {
+                roomAssignments[room].push(teamIndex);
+                teamIndex++;
+            }
+        }
+        
+        console.log('📍 Room Distribution:', roomAssignments);
+        return numRooms;
+    }
+
+    function createRoomNavigation() {
+        if (randomTeams.length === 0) return;
+        
+        const numRooms = Object.keys(roomAssignments).length;
+        if (numRooms <= 1) {
+            document.getElementById('roomNavigationSection').style.display = 'none';
+            return;
+        }
+        
+        const navContainer = document.getElementById('roomNavButtons');
+        const buttons = [];
+        
+        buttons.push(`
+            <button onclick="switchRoom('all')" 
+                    class="room-nav-btn ${currentRoomView === 'all' ? 'active' : ''}">
+                🌐 ALL ROOMS (${randomTeams.length} Teams)
+            </button>
+        `);
+        
+        for (let room = 1; room <= numRooms; room++) {
+            const teamsInRoom = roomAssignments[room].length;
+            buttons.push(`
+                <button onclick="switchRoom(${room})" 
+                        class="room-nav-btn ${currentRoomView === room ? 'active' : ''}">
+                    🎮 ROOM ${room} (${teamsInRoom} Teams)
+                </button>
+            `);
+        }
+        
+        navContainer.innerHTML = buttons.join('');
+        document.getElementById('roomNavigationSection').style.display = 'block';
+    }
+
+    function switchRoom(roomId) {
+        currentRoomView = roomId;
+        createRoomNavigation();
+        displayRandomTeams();
+        
+        document.getElementById('randomTeamsSection').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+    }
+
+    async function generateRandomTeams() {
+        const checkboxes = document.querySelectorAll('.checkbox-player:checked:not(:disabled)');
+        const selectedPlayerIds = Array.from(checkboxes).map(cb => cb.dataset.playerId);
+        
+        if (selectedPlayerIds.length < 4) {
+            showAlert('Please select at least 4 players', 'warning');
+            return;
+        }
+        
+        const teamSize = 4;
+        const numTeams = Math.floor(selectedPlayerIds.length / teamSize);
+        
+        if (numTeams === 0) {
+            showAlert('Not enough players for a complete team', 'warning');
+            return;
+        }
+        
+        const numRooms = Math.ceil(numTeams / 12);
+        
+        const confirmed = confirm(
+            `Create ${numTeams} random teams?\n\n` +
+            `• ${selectedPlayerIds.length} players selected\n` +
+            `• ${teamSize} players per team\n` +
+            `• ${numRooms} room(s) will be created\n` +
+            `• ${selectedPlayerIds.length % teamSize} players will be excluded\n\n` +
+            `Continue?`
+        );
+        
+        if (!confirmed) return;
+        
+        const selectedPlayers = players.filter(p => selectedPlayerIds.includes(p._id));
+        const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5);
+        
+        randomTeams = [];
+        for (let i = 0; i < numTeams; i++) {
+            const team = shuffled.slice(i * teamSize, (i + 1) * teamSize);
+            randomTeams.push(team);
+        }
+        
+        // CRITICAL: Calculate room distribution immediately after creating teams
+        const roomCount = calculateRoomDistribution(numTeams);
+        console.log('✅ Room distribution calculated:', roomAssignments);
+        console.log('📊 Total rooms:', roomCount);
+        
+        await saveGameState();
+        await loadPlayers();
+        
+        teamsVisible = true;
+        currentRoomView = 'all';
+        displayRandomTeams();
+        createRoomNavigation();
+        
+        showAlert(`${numTeams} teams created across ${roomCount} room(s)! 🎮`, 'success');
+    }
+    function displayRandomTeams() {
+        const container = document.getElementById('randomTeamsContainer');
+        const section = document.getElementById('randomTeamsSection');
+        
+        if (randomTeams.length === 0 || !teamsVisible) {
+            section.style.display = 'none';
+            return;
+        }
+        
+        section.style.display = 'block';
+        
+        let teamsToDisplay = [];
+        let displayTitle = '';
+        
+        if (currentRoomView === 'all') {
+            teamsToDisplay = randomTeams.map((team, idx) => ({
+                team,
+                teamIndex: idx,
+                teamNumber: idx + 1
+            }));
+            displayTitle = `🌐 ALL ROOMS - ${randomTeams.length} TEAMS`;
+        } else {
+            const roomNumber = currentRoomView;
+            const teamIndices = roomAssignments[roomNumber] || [];
+            teamsToDisplay = teamIndices.map(idx => ({
+                team: randomTeams[idx],
+                teamIndex: idx,
+                teamNumber: idx + 1,
+                roomNumber: roomNumber
+            }));
+            displayTitle = `🎮 ROOM ${roomNumber} - ${teamsToDisplay.length} TEAMS`;
+        }
+        
+        const sectionTitle = section.querySelector('h2');
+        if (sectionTitle) {
+            sectionTitle.textContent = displayTitle;
+        }
+        
+        container.innerHTML = teamsToDisplay.map(({ team, teamIndex, teamNumber, roomNumber }) => {
+            const teamKills = team.reduce((sum, p) => sum + (p.total || 0), 0);
+            
+            return `
+                <div class="card rounded-lg p-5 shadow-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <h3 class="text-xl font-bold text-white">
+                                TEAM ${teamNumber}
+                                ${roomNumber ? `<span class="text-orange-500 text-sm ml-2">• Room ${roomNumber}</span>` : ''}
+                            </h3>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-bold text-orange-500">${teamKills}</div>
+                            <div class="text-xs text-gray-400 uppercase">Total Kills</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        ${team.map((player, playerIndex) => {
+                            const position = playerIndex + 1;
+                            return `
+                                <div class="stat-item rounded p-4 ${position === 1 ? 'accent-border' : ''}">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs font-bold text-gray-400 uppercase">Position ${position}</span>
+                                        ${position === 1 ? '<span class="text-xs text-orange-500">👑 Leader</span>' : ''}
+                                    </div>
+                                    <div class="font-bold text-white mb-1">${player.playerName}</div>
+                                    <div class="text-sm text-gray-400 mb-3">${player.ffName || '-'}</div>
+                                    
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between text-xs">
+                                            <span class="text-gray-400">Bermuda:</span>
+                                            <input type="number" 
+                                                   min="0" 
+                                                   value="${player.map1 || 0}"
+                                                   onchange="updateTeamPlayerKills('${player._id}', 'map1', this.value)"
+                                                   class="w-16 rounded px-2 py-1 text-center text-xs">
+                                        </div>
+                                        <div class="flex items-center justify-between text-xs">
+                                            <span class="text-gray-400">Purgatory:</span>
+                                            <input type="number" 
+                                                   min="0" 
+                                                   value="${player.map2 || 0}"
+                                                   onchange="updateTeamPlayerKills('${player._id}', 'map2', this.value)"
+                                                   class="w-16 rounded px-2 py-1 text-center text-xs">
+                                        </div>
+                                        <div class="flex items-center justify-between text-xs">
+                                            <span class="text-gray-400">Kalahari:</span>
+                                            <input type="number" 
+                                                   min="0" 
+                                                   value="${player.map3 || 0}"
+                                                   onchange="updateTeamPlayerKills('${player._id}', 'map3', this.value)"
+                                                   class="w-16 rounded px-2 py-1 text-center text-xs">
+                                        </div>
+                                        <div class="flex items-center justify-between pt-2 border-t border-gray-700">
+                                            <span class="text-orange-500 font-bold text-xs uppercase">Total:</span>
+                                            <span class="text-orange-500 font-bold">${player.total || 0}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function toggleTeamsView() {
+        teamsVisible = !teamsVisible;
+        const btn = document.getElementById('viewTeamsBtn');
+        
+        if (teamsVisible) {
+            btn.innerHTML = '👁️ HIDE TEAMS';
+            btn.classList.add('bg-cyan-700');
+            displayRandomTeams();
+            createRoomNavigation();
+        } else {
+            btn.innerHTML = '👁️ VIEW TEAMS';
+            btn.classList.remove('bg-cyan-700');
+            document.getElementById('randomTeamsSection').style.display = 'none';
+            document.getElementById('roomNavigationSection').style.display = 'none';
+        }
+    }
+
+    async function updateTeamPlayerKills(playerId, map, kills) {
+        await updateKills(playerId, map, kills);
+        
+        randomTeams.forEach(team => {
+            const player = team.find(p => p._id === playerId);
+            if (player) {
+                player[map] = parseInt(kills) || 0;
+                player.total = (player.map1 || 0) + (player.map2 || 0) + (player.map3 || 0);
+            }
+        });
+        
+        if (teamsVisible) {
+            displayRandomTeams();
+        }
+        
+        if (gameState) {
+            await saveGameState();
+        }
+    }
+
+    function updateStats() {
+        const totalKills = players.reduce((sum, p) => sum + (p.total || 0), 0);
+        document.getElementById('totalPlayers').textContent = players.length;
+        document.getElementById('totalKills').textContent = totalKills;
+    }
+
+    function renderScoreTable() {
+        const tbody = document.getElementById('scoreTableBody');
+        const emptyState = document.getElementById('emptyState');
+        
+        if (players.length === 0) {
+            tbody.innerHTML = '';
+            emptyState.style.display = 'block';
+            return;
+        }
+        
+        emptyState.style.display = 'none';
+        
+        const sortedPlayers = [...players].sort((a, b) => (b.total || 0) - (a.total || 0));
+        
+        tbody.innerHTML = sortedPlayers.map((player, index) => {
+            const rank = index + 1;
+            const isTop3 = rank <= 3;
+            const rowClass = isTop3 ? 'top-player' : '';
+            
+            return `
+                <tr class="border-b border-gray-800 ${rowClass}">
+                    <td class="p-4">
+                        <input type="checkbox" 
+                               class="checkbox-player" 
+                               data-player-id="${player._id}"
+                               ${player.inTeam ? 'checked disabled' : ''}>
+                    </td>
+                    <td class="p-4">
+                        <div class="rank-badge ${isTop3 ? 'top-3' : ''}">${rank}</div>
+                    </td>
+                    <td class="p-4 font-semibold">${player.playerName}</td>
+                    <td class="p-4 text-gray-300">${player.ffName || '-'}</td>
+                    <td class="p-4 text-gray-300">${player.ffId || '-'}</td>
+                    <td class="p-4 text-center">
+                        <input type="number" 
+                               min="0" 
+                               value="${player.map1 || 0}" 
+                               onchange="updateKills('${player._id}', 'map1', this.value)"
+                               class="w-20 rounded px-3 py-2 text-center"
+                               ${player.inTeam ? 'disabled' : ''}>
+                    </td>
+                    <td class="p-4 text-center">
+                        <input type="number" 
+                               min="0" 
+                               value="${player.map2 || 0}" 
+                               onchange="updateKills('${player._id}', 'map2', this.value)"
+                               class="w-20 rounded px-3 py-2 text-center"
+                               ${player.inTeam ? 'disabled' : ''}>
+                    </td>
+                    <td class="p-4 text-center">
+                        <input type="number" 
+                               min="0" 
+                               value="${player.map3 || 0}" 
+                               onchange="updateKills('${player._id}', 'map3', this.value)"
+                               class="w-20 rounded px-3 py-2 text-center"
+                               ${player.inTeam ? 'disabled' : ''}>
+                    </td>
+                    <td class="p-4 text-center">
+                        <div class="text-xl font-bold text-orange-500">${player.total || 0}</div>
+                    </td>
+                    <td class="p-4 text-center">
+                        <button onclick="deletePlayer('${player._id}')" 
+                                class="delete-btn text-gray-400 hover:text-red-500 font-bold"
+                                ${player.inTeam ? 'disabled style="opacity: 0.3; cursor: not-allowed;"' : ''}>
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async function updateKills(playerId, map, kills) {
+        try {
+            const killsNum = parseInt(kills) || 0;
+            
+            const response = await fetch(`${API_BASE}/kills/updateKills`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    playerId,
+                    map,
+                    kills: killsNum
+                })
+            });
+
+            if (response.ok) {
+                await loadPlayers();
+                showAlert('Kills updated successfully! ✅', 'success');
+            }
+        } catch (error) {
+            console.error('Error updating kills:', error);
+            showAlert('Failed to update kills', 'error');
+        }
+    }
+
+    async function deletePlayer(playerId) {
+        const confirmed = confirm('Are you sure you want to delete this player?');
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/kills/deletePlayer/${playerId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                selectedTopPlayers = selectedTopPlayers.filter(pid => pid !== playerId);
+                
+                let playerFoundInTeam = false;
+                randomTeams = randomTeams.map(team => {
+                    const filteredTeam = team.filter(p => p._id !== playerId);
+                    if (filteredTeam.length < team.length) {
+                        playerFoundInTeam = true;
+                    }
+                    return filteredTeam;
+                }).filter(team => team.length > 0);
+                
+                if (playerFoundInTeam && gameState) {
+                    await saveGameState();
+                }
+                
+                await loadPlayers();
+                displayTopPlayers();
+                displayRandomTeams();
+                showAlert('Player deleted successfully! ✅', 'success');
+            }
+        } catch (error) {
+            console.error('Error deleting player:', error);
+            showAlert('Failed to delete player', 'error');
+        }
+    }
+
+    async function clearAllData() {
+        const confirmed = confirm(
+            '⚠️ WARNING: This will delete ALL players and scores!\n\n' +
+            'This action cannot be undone. Are you sure?'
+        );
+        
+        if (!confirmed) return;
+
+        const doubleConfirm = confirm('Are you ABSOLUTELY sure? Type YES to confirm:');
+        if (!doubleConfirm) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/kills/clearAll`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                randomTeams = [];
+                selectedTopPlayers = [];
+                roomAssignments = {};
+                await saveGameState();
+                await loadPlayers();
+                showAlert('All data cleared! 🗑️', 'success');
+            }
+        } catch (error) {
+            console.error('Error clearing data:', error);
+            showAlert('Failed to clear data', 'error');
+        }
+    }
+
+    function showTopPlayersModal() {
+        document.getElementById('topPlayersModal').style.display = 'block';
+        
+        const select = document.getElementById('topPlayersCount');
+        select.onchange = function() {
+            const customDiv = document.getElementById('customSelectionDiv');
+            if (this.value === 'custom') {
+                customDiv.style.display = 'block';
+                renderPlayerSelectionList();
+            } else {
+                customDiv.style.display = 'none';
+            }
+        };
+    }
+
+    function renderPlayerSelectionList() {
+        const container = document.getElementById('playerSelectionList');
+        const sortedPlayers = [...players].sort((a, b) => (b.total || 0) - (a.total || 0));
+        
+        container.innerHTML = sortedPlayers.map(player => `
+            <label class="flex items-center gap-3 p-3 rounded hover:bg-gray-800 cursor-pointer">
+                <input type="checkbox" 
+                       class="checkbox-player" 
+                       value="${player._id}"
+                       ${selectedTopPlayers.includes(player._id) ? 'checked' : ''}>
+                <span class="text-white font-semibold">${player.playerName}</span>
+                <span class="text-gray-400 text-sm ml-auto">${player.total || 0} kills</span>
+            </label>
+        `).join('');
+    }
+
+    function closeTopPlayersModal() {
+        document.getElementById('topPlayersModal').style.display = 'none';
+    }
+
+    async function applyTopPlayersSelection() {
+        const selectValue = document.getElementById('topPlayersCount').value;
+        
+        if (selectValue === 'custom') {
+            const checkboxes = document.querySelectorAll('#playerSelectionList input[type="checkbox"]:checked');
+            selectedTopPlayers = Array.from(checkboxes).map(cb => cb.value);
+        } else {
+            const count = parseInt(selectValue);
+            const sortedPlayers = [...players].sort((a, b) => (b.total || 0) - (a.total || 0));
+            selectedTopPlayers = sortedPlayers.slice(0, count).map(p => p._id);
+        }
+        
+        await saveGameState();
+        displayTopPlayers();
+        closeTopPlayersModal();
+        showAlert(`Top ${selectedTopPlayers.length} players selected! 🏆`, 'success');
+    }
+
+    function getPlayerTeamInfo(playerId) {
+        for (let roomNum in roomAssignments) {
+            const teamIndices = roomAssignments[roomNum];
+            for (let teamIndex of teamIndices) {
+                const team = randomTeams[teamIndex];
+                if (team && team.some(p => p._id === playerId)) {
+                    return {
+                        room: roomNum,
+                        team: teamIndex + 1
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    function displayTopPlayers() {
+        const section = document.getElementById('topPlayersSection');
+        const container = document.getElementById('topPlayersContainer');
+        
+        if (selectedTopPlayers.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+        
+        section.style.display = 'block';
+        
+        const topPlayers = players
+            .filter(p => selectedTopPlayers.includes(p._id))
+            .sort((a, b) => (b.total || 0) - (a.total || 0));
+        
+        container.innerHTML = topPlayers.map((player, index) => {
+            const teamInfo = getPlayerTeamInfo(player._id);
+            
+            return `
+                <div class="top-player-card">
+                    <div class="text-4xl font-bold text-yellow-500 mb-2">#${index + 1}</div>
+                    <div class="text-white font-bold text-lg mb-1">${player.playerName}</div>
+                    <div class="text-gray-400 text-sm mb-2">${player.ffName || '-'}</div>
+                    ${teamInfo ? `
+                        <div class="text-xs font-bold text-blue-400 mb-2">
+                            Room ${teamInfo.room} • Team ${teamInfo.team}
+                        </div>
+                    ` : ''}
+                    <div class="text-orange-500 font-bold text-2xl">${player.total || 0} Kills</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function showExportModal() {
+        const modal = document.getElementById('exportModal');
+        const squadsSection = document.getElementById('squadsExportSection');
+        const roomsSection = document.getElementById('roomsExportSection');
+        
+        if (randomTeams.length > 0) {
+            squadsSection.style.display = 'block';
+            roomsSection.style.display = 'block';
+        } else {
+            squadsSection.style.display = 'none';
+            roomsSection.style.display = 'none';
+        }
+        
+        modal.style.display = 'block';
+    }
+
+    function closeExportModal() {
+        document.getElementById('exportModal').style.display = 'none';
+    }
+
+    function exportXLSX(type) {
+        try {
+            const wb = XLSX.utils.book_new();
+            
+            switch(type) {
+                case 'singles':
+                    exportSingles(wb);
+                    XLSX.writeFile(wb, `FreeFire_Players_${getTimestamp()}.xlsx`);
+                    break;
+                case 'top48':
+                    exportTop48(wb);
+                    XLSX.writeFile(wb, `FreeFire_Top48_${getTimestamp()}.xlsx`);
+                    break;
+                case 'squads-no-kills':
+                    exportSquads(wb, false);
+                    XLSX.writeFile(wb, `FreeFire_Teams_${getTimestamp()}.xlsx`);
+                    break;
+                case 'squads-with-kills':
+                    exportSquads(wb, true);
+                    XLSX.writeFile(wb, `FreeFire_Teams_WithKills_${getTimestamp()}.xlsx`);
+                    break;
+                case 'rooms':
+                    exportRooms(wb);
+                    XLSX.writeFile(wb, `FreeFire_Rooms_${getTimestamp()}.xlsx`);
+                    break;
+                case 'complete':
+                    exportComplete(wb);
+                    XLSX.writeFile(wb, `FreeFire_Complete_Export_${getTimestamp()}.xlsx`);
+                    break;
+            }
+            
+            showAlert('Export successful! ✅', 'success');
+            closeExportModal();
+        } catch (error) {
+            console.error('Export error:', error);
+            showAlert('Export failed', 'error');
+        }
+    }
+
+    function exportSingles(wb) {
+        const sorted = [...players].sort((a, b) => (b.total || 0) - (a.total || 0));
+        const data = sorted.map((p, i) => ({
+            'Rank': i + 1,
+            'Player Name': p.playerName,
+            'FF Name': p.ffName || '-',
+            'FF ID': p.ffId || '-',
+            'Bermuda': p.map1 || 0,
+            'Purgatory': p.map2 || 0,
+            'Kalahari': p.map3 || 0,
+            'Total Kills': p.total || 0
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(data);
+        ws['!cols'] = [
+            { wch: 6 }, { wch: 20 }, { wch: 20 }, 
+            { wch: 15 }, { wch: 10 }, { wch: 10 }, 
+            { wch: 10 }, { wch: 12 }
+        ];
+        
+        XLSX.utils.book_append_sheet(wb, ws, 'All Players');
+    }
+
+    function exportTop48(wb) {
+        const sorted = [...players].sort((a, b) => (b.total || 0) - (a.total || 0));
+        const top48 = sorted.slice(0, 48);
+        const data = top48.map((p, i) => ({
+            'Rank': i + 1,
+            'Player Name': p.playerName,
+            'FF Name': p.ffName || '-',
+            'FF ID': p.ffId || '-',
+            'Total Kills': p.total || 0
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(data);
+        ws['!cols'] = [{ wch: 6 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 12 }];
+        
+        XLSX.utils.book_append_sheet(wb, ws, 'Top 48 Players');
+    }
+
+    function exportSquads(wb, includeKills) {
+        const data = [];
+        
+        randomTeams.forEach((team, teamIndex) => {
+            team.forEach((player, playerIndex) => {
+                const row = {
+                    'Team': teamIndex + 1,
+                    'Position': playerIndex + 1,
+                    'Player Name': player.playerName,
+                    'FF Name': player.ffName || '-',
+                    'FF ID': player.ffId || '-'
+                };
+                
+                if (includeKills) {
+                    row['Bermuda'] = player.map1 || 0;
+                    row['Purgatory'] = player.map2 || 0;
+                    row['Kalahari'] = player.map3 || 0;
+                    row['Total'] = player.total || 0;
+                }
+                
+                data.push(row);
+            });
+        });
+        
+        const ws = XLSX.utils.json_to_sheet(data);
+        const colWidths = [
+            { wch: 6 }, { wch: 10 }, { wch: 20 }, 
+            { wch: 20 }, { wch: 15 }
+        ];
+        
+        if (includeKills) {
+            colWidths.push({ wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 });
+        }
+        
+        ws['!cols'] = colWidths;
+        XLSX.utils.book_append_sheet(wb, ws, 'Team Rosters');
+    }
+
+    function exportRooms(wb) {
+        Object.keys(roomAssignments).forEach(roomNum => {
+            const teamIndices = roomAssignments[roomNum];
+            const data = [];
+            
+            teamIndices.forEach(teamIndex => {
+                const team = randomTeams[teamIndex];
+                team.forEach((player, playerIndex) => {
+                    data.push({
+                        'Team': teamIndex + 1,
+                        'Position': playerIndex + 1,
+                        'Player Name': player.playerName,
+                        'FF Name': player.ffName || '-',
+                        'FF ID': player.ffId || '-',
+                        'Bermuda': player.map1 || 0,
+                        'Purgatory': player.map2 || 0,
+                        'Kalahari': player.map3 || 0,
+                        'Total': player.total || 0
+                    });
+                });
+            });
+            
+            const ws = XLSX.utils.json_to_sheet(data);
+            ws['!cols'] = [
+                { wch: 6 }, { wch: 10 }, { wch: 20 }, 
+                { wch: 20 }, { wch: 15 }, { wch: 10 }, 
+                { wch: 10 }, { wch: 10 }, { wch: 10 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws, `Room ${roomNum}`);
+        });
+    }
+
+    function exportComplete(wb) {
+        exportSingles(wb);
+        exportTop48(wb);
+        
+        if (randomTeams.length > 0) {
+            exportSquads(wb, true);
+            exportRooms(wb);
+        }
+    }
+
+    function getTimestamp() {
+        const now = new Date();
+        return now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    }
+
+    function showAlert(message, type = 'success') {
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.textContent = message;
+        document.body.appendChild(alert);
+        
+        setTimeout(() => {
+            alert.remove();
+        }, 3000);
+    }
+
+    window.onclick = function(event) {
+        const exportModal = document.getElementById('exportModal');
+        const topPlayersModal = document.getElementById('topPlayersModal');
+        
+        if (event.target === exportModal) {
+            closeExportModal();
+        }
+        if (event.target === topPlayersModal) {
+            closeTopPlayersModal();
+        }
+    };
+</script>
+</body>
+</html>

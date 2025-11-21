@@ -1,0 +1,114 @@
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+  color: white;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+header {
+  background: #111;
+  padding: 20px;
+  font-size: 24px;
+  letter-spacing: 1px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 30px;
+  padding: 40px;
+}
+
+.card {
+  background: #1c1f26;
+  border-radius: 15px;
+  padding: 25px;
+  width: 320px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+  text-align: left;
+}
+
+input, button {
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  font-size: 14px;
+}
+
+input {
+  background: #2a2e38;
+  color: white;
+}
+
+button {
+  background: #ff4757;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: #e84118;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #444;
+  margin: 15px 0;
+}
+
+.data-section {
+  background: #1b1b1b;
+  padding: 30px;
+  border-top: 2px solid #333;
+}
+
+#output {
+  margin-top: 20px;
+  white-space: pre-wrap;
+  text-align: left;
+  background: #2b2b2b;
+  padding: 20px;
+  border-radius: 10px;
+  color: #eee;
+  overflow-x: auto;
+}
+.search-container {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 15px 0;
+}
+
+th, td {
+  border-bottom: 1px solid #444;
+  padding: 8px;
+  text-align: center;
+}
+
+td button {
+  margin: 0 3px;
+  padding: 5px 8px;
+  background: #444;
+  border: none;
+  border-radius: 5px;
+}
+
+td button:hover {
+  background: #e74c3c;
+}
