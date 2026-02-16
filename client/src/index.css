@@ -1,0 +1,187 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Russo+One&family=Exo+2:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Rajdhani', sans-serif;
+  overflow-x: hidden;
+  background: #0F0F0F;
+  color: #ffffff;
+}
+
+/* Custom Scrollbar - Cyberpunk Style */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1A1A1A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FF3B3B;
+  border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF006E;
+}
+
+/* Cyberpunk UI Components */
+@layer components {
+
+  /* Primary Button - Electric Red */
+  .btn-cyber-primary {
+    @apply bg-cyber-red text-white font-oswald uppercase tracking-wider px-8 py-3 hover:bg-cyber-red/90 transition-all shadow-lg shadow-cyber-red/20 active:scale-95 font-bold;
+  }
+
+  /* Secondary Button - Cyber Pink Outline */
+  .btn-cyber-secondary {
+    @apply bg-transparent text-cyber-pink border-2 border-cyber-pink font-oswald uppercase tracking-wider px-8 py-3 hover:bg-cyber-pink hover:text-white transition-all active:scale-95 font-bold;
+  }
+
+  /* Ghost Button */
+  .btn-cyber-ghost {
+    @apply bg-transparent text-white border border-cyber-border font-oswald uppercase tracking-wider px-6 py-2.5 hover:border-cyber-red hover:text-cyber-red transition-all active:scale-95;
+  }
+
+  /* Glassmorphism Panel */
+  .glass-cyber {
+    background: rgba(30, 30, 30, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Card with Hover Lift */
+  .card-cyber {
+    @apply bg-cyber-card border border-cyber-border hover:translate-y-[-4px] transition-all shadow-xl hover:shadow-2xl hover:shadow-cyber-red/10;
+  }
+
+  /* Input Field - Cyberpunk Style */
+  .input-cyber {
+    @apply bg-cyber-charcoal border border-cyber-border text-white px-4 py-3 focus:outline-none focus:border-cyber-red focus:ring-1 focus:ring-cyber-red transition-all;
+  }
+
+  /* Badge - Electric Red */
+  .badge-cyber {
+    @apply bg-cyber-red text-white font-oswald uppercase text-xs px-3 py-1 tracking-wider font-bold;
+  }
+
+  /* Heading - Condensed Oswald */
+  .heading-cyber {
+    @apply font-oswald uppercase tracking-wide font-bold;
+  }
+
+  /* Force select options visibility in dark mode */
+  select option {
+    background-color: #1E1E1E !important;
+    color: #ffffff !important;
+  }
+
+  /* Clip Path Utilities for Aggressive Shapes */
+  .clip-path-slant {
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  }
+
+  .clip-path-slant-sm {
+    clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  }
+
+  .clip-path-slant-lg {
+    clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
+  }
+
+  .clip-path-polygon-header {
+    clip-path: polygon(0 0,
+        100% 0,
+        100% calc(100% - 20px),
+        calc(100% - 20px) 100%,
+        20px 100%,
+        0 calc(100% - 20px));
+  }
+}
+
+@layer utilities {
+  .text-shadow-neon {
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+  }
+
+  .text-shadow-red {
+    text-shadow: 0 0 10px rgba(255, 59, 59, 0.5);
+  }
+
+  .text-stroke-cyber-red {
+    -webkit-text-stroke: 1px #FF3B3B;
+    text-stroke: 1px #FF3B3B;
+  }
+
+  .text-stroke-cyber-blue {
+    -webkit-text-stroke: 1px #00F0FF;
+    text-stroke: 1px #00F0FF;
+  }
+
+  .text-stroke-cyber-pink {
+    -webkit-text-stroke: 1px #FF006E;
+    text-stroke: 1px #FF006E;
+  }
+
+  /* Loading Animations */
+  .animate-loading-scan {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .animate-loading-scan::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0) 40%,
+        rgba(255, 255, 255, 0.4) 50%,
+        rgba(255, 255, 255, 0) 60%,
+        transparent 100%);
+    animation: loading-scan 1.5s infinite;
+  }
+}
+
+@keyframes loading-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover Lift Animation */
+@keyframes hover-lift {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-4px);
+  }
+}

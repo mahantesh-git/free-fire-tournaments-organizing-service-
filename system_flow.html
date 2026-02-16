@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Fire Tournament System Flow</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            securityLevel: 'loose',
+        });
+    </script>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00ff00;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Free Fire Tournament System Flow</h1>
+    <div class="mermaid">
+        sequenceDiagram
+        autonumber
+        actor Org as Organizer
+        actor Player as Player
+        participant Client as Frontend
+        participant Firewall as Security Layer
+        participant API as Backend API
+        participant DB as MongoDB
+        participant Socket as Socket.io
+
+        rect rgb(60, 20, 20)
+        Note over Org,Socket: Phase 0 - Security & Rate Limiting
+        Client->>Firewall: API Request
+        Firewall->>Firewall: Check Rate Limit & IP
+        Firewall-->>Client: 429 Too Many Requests (if exceeded)
+        Firewall->>API: Forward Safe Request (Sanitized)
+        end
+
+        rect rgb(30, 30, 45)
+        Note over Org,Socket: Phase 1 - Multi-Tenancy & Org Setup
+        Org->>Client: Register/Login Organization
+        Client->>API: POST /api/organizer/register
+        API->>DB: Resolve Tenant & Create DB Link
+        DB-->>API: Success
+        API-->>Org: Dashboard Access (Tenant Scope)
+        end
+
+        rect rgb(45, 30, 45)
+        Note over Org,Socket: Phase 2 - Tournament Setup
+        Org->>Client: Create Tournament (SQUAD/SOLO)
+        Org->>Client: Select Ranking Mode (POINTS vs KILLS)
+        Client->>API: POST /api/tournaments
+        API->>DB: Save Tournament Mode & Settings
+        API-->>Client: Return Tournament ID
+        end
+
+        rect rgb(30, 45, 45)
+        Note over Org,Socket: Phase 3 - Registration
+        Org->>Player: Share Registration Link
+        Player->>Client: Submit Registration Form
+        Client->>API: POST /api/kills/squadRegister
+        API->>DB: Save to Kills/Squads
+        Org->>Client: Click Export Database
+        Client->>API: GET /api/kills/export
+        API-->>Org: Serve Excel File
+        end
+
+        rect rgb(45, 45, 30)
+        Note over Org,Socket: Phase 4 - Room Generation
+        Org->>Client: Auto-Generate Rooms
+        Client->>API: POST /api/rooms/generate
+        API->>DB: Fetch Registrations & Settings
+        API->>API: Create Room Blocks
+        API->>DB: Store Room Documents
+        API-->>Client: Populate Room Management UI
+        end
+
+        rect rgb(30, 30, 30)
+        Note over Org,Socket: Phase 5 - Match Operations (Real-time)
+        Org->>Client: Update Kills/Placement
+        Client->>API: PUT /api/squadGame/updateKills
+        API->>DB: Fetch GameState & Tournament Settings
+        API->>API: Calculate Points (Dynamic: Kills/Placement)
+        API->>Socket: Emit scoreUpdate (Room & Public)
+
+        Client->>Client: Re-sort Leaderboard (Points vs Kills)
+        Client->>Client: Handle DQ & Elimination Display
+        end
+
+        rect rgb(50, 20, 50)
+        Note over Org,Socket: Phase 6 - Disqualification & Finalization
+        opt Disqualification
+        Org->>Client: Disqualify Squad
+        Client->>API: POST /api/squadGame/disqualify
+        API->>DB: Mark DQ in DB & History
+        API->>Socket: Emit DQ Event
+        end
+
+        Org->>Client: Complete Match (Finalize)
+        Client->>API: PUT /api/squadGame/completeMatch
+        API->>DB: Generate MatchHistory
+        API->>Socket: Emit matchEnded
+        end
+    </div>
+</body>
+
+</html>
