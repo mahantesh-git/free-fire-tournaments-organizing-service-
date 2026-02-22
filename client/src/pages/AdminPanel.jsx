@@ -164,7 +164,7 @@ const AdminPanel = () => {
     };
 
     return (
-        <div className="min-h-screen bg-cyber-black text-white font-inter selection:bg-cyber-red selection:text-white relative overflow-hidden">
+        <div className="min-h-screen bg-transparent text-white font-inter selection:bg-cyber-red selection:text-white relative overflow-hidden">
             {/* Background Effects */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(255,59,59,0.1),transparent_70%)]"></div>
@@ -175,7 +175,7 @@ const AdminPanel = () => {
             <Navbar />
 
             <div className="p-4 md:p-8 pb-32 relative z-10">
-                <div className="max-w-7xl mx-auto">
+                <div className="w-full px-4 md:px-8">
                     {/* Header Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                         <Card className="p-4 flex items-center justify-between group hover:border-cyber-red/50 transition-colors">

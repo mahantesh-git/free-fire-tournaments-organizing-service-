@@ -267,7 +267,7 @@ const RoomMatchControl = () => {
     const isSolo = room?.mode === 'SOLO';
 
     return (
-        <div className="min-h-screen bg-cyber-black text-white p-4 md:p-6 font-inter overflow-x-hidden selection:bg-cyber-red selection:text-white">
+        <div className="min-h-screen bg-transparent text-white p-4 md:p-6 font-inter overflow-x-hidden selection:bg-cyber-red selection:text-white">
             {/* Background Details */}
             <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-cyber-red/5 rounded-full blur-[128px]"></div>
@@ -275,7 +275,7 @@ const RoomMatchControl = () => {
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px]"></div>
             </div>
 
-            <div className="relative z-10 max-w-7xl mx-auto">
+            <div className="relative z-10 w-full px-4 md:px-8">
                 {/* --- HEADER CONTROLS --- */}
                 <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-cyber-border/30 pb-6">
                     <div>
@@ -420,9 +420,9 @@ const RoomMatchControl = () => {
                         </button>
                     </div>
                 ) : (
-                    <div className="grid gap-3">
+                    <div className={`grid gap-4 ${room?.mode === 'CLASH_SQUAD' ? 'md:grid-cols-2' : ''}`}>
                         {/* Header Row */}
-                        <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-2 text-[10px] font-bold text-cyber-muted uppercase tracking-widest font-oswald border-b border-cyber-border/30">
+                        <div className={`${room?.mode === 'CLASH_SQUAD' ? 'hidden' : 'hidden md:grid'} grid-cols-12 gap-4 px-6 py-2 text-[10px] font-bold text-cyber-muted uppercase tracking-widest font-oswald border-b border-cyber-border/30 col-span-full`}>
                             <div className="col-span-1">Status</div>
                             <div className="col-span-4">{isSolo ? 'Player' : 'Squad'}</div>
                             <div className="col-span-1 text-center">Rank</div>
@@ -439,13 +439,13 @@ const RoomMatchControl = () => {
                             return (
                                 <div key={gs._id} className={`group relative bg-cyber-card border border-cyber-border hover:border-cyber-muted transition-all duration-200 ${expandedSquad === gs._id ? 'border-cyber-red/50 bg-cyber-charcoal' : ''}`}>
                                     <div className={`absolute top-0 bottom-0 left-0 w-1 ${gs.isDisqualified ? 'bg-red-600' : isWinner ? 'bg-yellow-500' : gs.isCompleted ? 'bg-gray-500' : 'bg-success-500'}`}></div>
-                                    <div className="p-4 md:py-4 md:px-6 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                                    <div className={`p-4 md:py-4 md:px-6 grid gap-4 items-center ${room?.mode === 'CLASH_SQUAD' ? 'grid-cols-1 md:grid-cols-10' : 'grid-cols-1 md:grid-cols-12'}`}>
                                         <div className="col-span-1 flex items-center">
                                             {gs.isDisqualified ? <AlertTriangle className="text-red-600 w-5 h-5" /> : gs.isCompleted ? <CheckCircle className="text-cyber-muted w-5 h-5" /> : <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]"></div>}
                                         </div>
-                                        <div className="col-span-4" onClick={() => setExpandedSquad(expandedSquad === gs._id ? null : gs._id)}>
+                                        <div className={room?.mode === 'CLASH_SQUAD' ? 'col-span-4' : 'col-span-4'} onClick={() => setExpandedSquad(expandedSquad === gs._id ? null : gs._id)}>
                                             <h3 className="text-xl font-bold text-white font-oswald uppercase tracking-wide group-hover:text-cyber-red transition-colors cursor-pointer flex items-center gap-2">
-                                                {gs.squadName}
+                                                {gs.squadName} {room?.mode === 'CLASH_SQUAD' && <span className="text-cyber-muted text-sm tracking-normal">({tournament?.teamSize || 4}v{tournament?.teamSize || 4})</span>}
                                                 {gs.isDisqualified && <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 font-sans font-bold tracking-widest rounded-sm">DQ</span>}
                                                 {gs.isCompleted && !gs.isDisqualified && (
                                                     <span className={`text-[9px] px-1.5 py-0.5 font-sans font-bold tracking-widest rounded-sm flex items-center gap-1 ${isWinner ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'}`}>
@@ -460,10 +460,10 @@ const RoomMatchControl = () => {
                                         <div className="col-span-1 text-center hidden md:block">
                                             <div className="text-xl font-bold text-cyber-blue font-mono">{gs.squadPoints || 0}</div>
                                         </div>
-                                        <div className="col-span-2 text-center hidden md:block">
+                                        <div className="col-span-1 text-center hidden md:block">
                                             <div className="text-xl font-bold text-cyber-red font-mono">{gs.players.reduce((a, b) => a + (b.kills || 0), 0)}</div>
                                         </div>
-                                        <div className="col-span-3 flex justify-end items-center gap-3">
+                                        <div className={`${room?.mode === 'CLASH_SQUAD' ? 'col-span-2' : 'col-span-3'} flex justify-end items-center gap-3`}>
                                             {isActive && (
                                                 <button
                                                     onClick={(e) => {
@@ -476,16 +476,18 @@ const RoomMatchControl = () => {
                                                     {gameStates.filter(x => !x.isCompleted && !x.isDisqualified).length === 1 ? 'Crown Winner' : 'Eliminate'}
                                                 </button>
                                             )}
-                                            <button onClick={() => setExpandedSquad(expandedSquad === gs._id ? null : gs._id)} className={`p-2 hover:text-white transition-colors ${expandedSquad === gs._id ? 'text-cyber-red rotate-180' : 'text-cyber-muted'}`}>
-                                                <ChevronDown className="w-5 h-5 transition-transform" />
-                                            </button>
+                                            {room?.mode !== 'CLASH_SQUAD' && (
+                                                <button onClick={() => setExpandedSquad(expandedSquad === gs._id ? null : gs._id)} className={`p-2 hover:text-white transition-colors ${expandedSquad === gs._id ? 'text-cyber-red rotate-180' : 'text-cyber-muted'}`}>
+                                                    <ChevronDown className="w-5 h-5 transition-transform" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
 
                                     {/* Expanded Details */}
-                                    {expandedSquad === gs._id && (
+                                    {(expandedSquad === gs._id || room?.mode === 'CLASH_SQUAD') && (
                                         <div className={`border-t border-cyber-border bg-black/40 animate-fade-in ${isSolo ? 'p-2' : 'p-6'}`}>
-                                            <div className={`grid gap-4 ${isSolo ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
+                                            <div className={`grid gap-4 ${isSolo || room?.mode === 'CLASH_SQUAD' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
                                                 {gs.players.map((player) => (
                                                     <div key={player.ffId} className="bg-cyber-charcoal border border-cyber-border hover:border-cyber-muted/50 p-3 flex flex-col gap-3 relative overflow-hidden group/player">
                                                         <div className="flex justify-between items-start">

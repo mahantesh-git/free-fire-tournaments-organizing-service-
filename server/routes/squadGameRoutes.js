@@ -7,6 +7,7 @@ import tournamentSchema from '../models/tenant/Tournament.js';
 import gameStateSchema from '../models/tenant/GameState.js';
 import roomSchema from '../models/tenant/Room.js';
 import killsSchema from '../models/tenant/Kills.js'; // Use Kills schema for Players in SOLO mode
+import duoSchema from '../models/tenant/Duo.js';
 import { getTenantModel } from '../utils/tenantModel.js';
 import { checkKillUpdateAuth, validateSquadAccess } from '../middlewares/authMiddleware.js';
 import HistoryService from '../services/historyService.js';
@@ -20,7 +21,8 @@ const getModels = (req) => ({
     GameState: getTenantModel(req.tenantConnection, 'GameState', gameStateSchema),
     Tournament: getTenantModel(req.tenantConnection, 'Tournament', tournamentSchema),
     Room: getTenantModel(req.tenantConnection, 'Room', roomSchema),
-    Player: getTenantModel(req.tenantConnection, 'Kills', killsSchema) // Use Kills model as Player source
+    Player: getTenantModel(req.tenantConnection, 'Kills', killsSchema), // Use Kills model as Player source
+    Duo: getTenantModel(req.tenantConnection, 'Duo', duoSchema)
 });
 
 // Helper to finalize a squad match (used by manual button and auto-elimination)
@@ -35,8 +37,12 @@ const finalizeSquadMatch = async (req, gameStateId, providedPlacement = null) =>
     }
 
     // 2. Find the room to get all participating squads/players
-    // Check both 'squads' and 'players' arrays
+    // Check squads, duos, and players arrays
     let room = await Room.findOne({ squads: gameState.squadId });
+    if (!room) {
+        // Try finding by duo ID (DUO mode)
+        room = await Room.findOne({ duos: gameState.squadId });
+    }
     if (!room) {
         // Try finding by player ID (SOLO mode)
         room = await Room.findOne({ players: gameState.squadId });
@@ -47,8 +53,17 @@ const finalizeSquadMatch = async (req, gameStateId, providedPlacement = null) =>
         return null;
     }
 
-    // Determine if we should look at squads or players based on room mode
-    const participantsList = room.mode === 'SOLO' ? room.players : room.squads;
+    // Determine which participant list to use based on room mode
+    let participantsList;
+    if (room.mode === 'SOLO') {
+        participantsList = room.players;
+    } else if (room.mode === 'DUO') {
+        participantsList = room.duos;
+    } else if (room.mode === 'SQUAD' || room.mode === 'CLASH_SQUAD') {
+        participantsList = room.squads;
+    } else {
+        participantsList = room.squads; // default fallback
+    }
 
     // 3. Robust Ranking Logic: 
     // Your rank is the number of squads that were still "alive" (isActive) when you were eliminated.
@@ -375,7 +390,7 @@ router.post('/startMatch', async (req, res) => {
  */
 router.post('/startRoomMatch', async (req, res) => {
     try {
-        const { Squad, SquadGameState, Room, Player } = getModels(req);
+        const { Squad, SquadGameState, Room, Player, Duo } = getModels(req);
         const { roomId, matchNumber } = req.body;
 
         if (!roomId) {
@@ -433,6 +448,47 @@ router.post('/startRoomMatch', async (req, res) => {
                         survived: false,
                         revives: 0
                     }]
+                });
+
+                await gameState.save();
+                createdGameStates.push(gameState);
+            }
+
+        } else if (room.mode === 'DUO') {
+            // --- DUO MODE LOGIC ---
+            const duos = await Duo.find({ _id: { $in: room.duos } });
+
+            for (const duo of duos) {
+                const existingState = await SquadGameState.findOne({
+                    squadId: duo._id,
+                    matchNumber: matchNumber || 1,
+                    roomId: roomId
+                });
+
+                if (existingState) {
+                    createdGameStates.push(existingState);
+                    continue;
+                }
+
+                const gameState = new SquadGameState({
+                    squadId: duo._id,
+                    roomId: room._id,
+                    tournamentId: room.tournamentId,
+                    squadName: duo.teamName,
+                    matchNumber: matchNumber || 1,
+                    isActive: true,
+                    isCompleted: false,
+                    players: duo.players.map(player => ({
+                        playerId: player.ffId,
+                        playerName: player.playerName,
+                        ffName: player.ffName,
+                        ffId: player.ffId,
+                        kills: 0,
+                        assists: 0,
+                        damage: 0,
+                        survived: false,
+                        revives: 0
+                    }))
                 });
 
                 await gameState.save();
@@ -557,11 +613,20 @@ router.get('/roomMatchState/:roomId', async (req, res) => {
             }
 
             gameStates = await SquadGameState.find({
-                squadId: { $in: room.players }, // Here squadId refers to Player ID
+                squadId: { $in: room.players },
                 matchNumber: matchNumber || 1
             }).lean();
-            // Note: We do NOT populate 'squadId' here because it points to 'Squad' collection, 
-            // but our IDs are from 'Kills' collection.
+
+        } else if (room.mode === 'DUO') {
+            // DUO MODE: Use room.duos
+            if (!room.duos || room.duos.length === 0) {
+                return res.json({ success: true, gameStates: [], room });
+            }
+
+            gameStates = await SquadGameState.find({
+                squadId: { $in: room.duos },
+                matchNumber: matchNumber || 1
+            }).lean();
 
         } else {
             // SQUAD MODE: Existing logic

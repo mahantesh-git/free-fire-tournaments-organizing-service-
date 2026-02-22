@@ -49,10 +49,14 @@ const TournamentDetails = () => {
                     setTournament(tourny);
 
                     // Fetch Counts based on mode
-                    if (tourny.mode === 'SQUAD') {
+                    if (tourny.mode === 'SQUAD' || tourny.mode === 'CLASH_SQUAD') {
                         const squadsRes = await api.get(`/api/kills/getSquads?tournamentId=${tournamentId}`);
                         const squadList = Array.isArray(squadsRes.data) ? squadsRes.data : (squadsRes.data.squads || []);
-                        setPlayerCount(tourny.mode === 'SQUAD' ? squadList.length : squadList.length * 4);
+                        setPlayerCount(squadList.length);
+                    } else if (tourny.mode === 'DUO') {
+                        const duosRes = await api.get(`/api/kills/getDuos?tournamentId=${tournamentId}`);
+                        const duoList = Array.isArray(duosRes.data) ? duosRes.data : (duosRes.data.duos || []);
+                        setPlayerCount(duoList.length);
                     } else {
                         const playersRes = await getPlayers(tournamentId);
                         // Access the player array from the response object
@@ -94,7 +98,7 @@ const TournamentDetails = () => {
     }
 
     return (
-        <div className="min-h-screen bg-cyber-black text-white font-inter">
+        <div className="min-h-screen bg-transparent text-white font-inter">
             {/* Navbar (Placeholder/Basic for now if not fully redesigned) */}
             <div className="border-b border-cyber-border bg-cyber-charcoal px-6 py-4 flex justify-between items-center shadow-lg">
                 <div className="flex items-center space-x-3">
@@ -108,7 +112,7 @@ const TournamentDetails = () => {
                 </button>
             </div>
 
-            <div className="max-w-7xl mx-auto p-4 md:p-8">
+            <div className="w-full mx-auto px-4 md:px-8 py-4 md:py-8">
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b border-cyber-border pb-8">
                     <div>
@@ -260,15 +264,17 @@ const TournamentDetails = () => {
                                             <Users className="w-12 h-12 text-white" />
                                         </div>
                                         <div className="text-cyber-muted text-xs font-oswald uppercase tracking-widest mb-2">
-                                            {tournament.mode === 'SQUAD' ? 'Total Players' : 'Rooms Needed'}
+                                            {tournament.mode === 'SQUAD' || tournament.mode === 'CLASH_SQUAD' ? 'Total Players' : tournament.mode === 'DUO' ? 'Total Players' : 'Rooms Needed'}
                                         </div>
                                         <div className="text-4xl font-oswald font-black text-white">
-                                            {tournament.mode === 'SQUAD'
+                                            {tournament.mode === 'SQUAD' || tournament.mode === 'CLASH_SQUAD'
                                                 ? playerCount * 4
-                                                : Math.ceil(playerCount / (tournament.maxPlayersPerRoom || 12))}
+                                                : tournament.mode === 'DUO'
+                                                    ? playerCount * 2
+                                                    : Math.ceil(playerCount / (tournament.maxPlayersPerRoom || 12))}
                                         </div>
                                         <div className="text-cyber-muted/50 text-xs mt-2 font-mono">
-                                            {tournament.mode === 'SQUAD' ? 'ESTIMATED_4P' : `BASED_ON_${tournament.maxPlayersPerRoom || 12}_PER_ROOM`}
+                                            {tournament.mode === 'SQUAD' || tournament.mode === 'CLASH_SQUAD' ? 'ESTIMATED_4P' : tournament.mode === 'DUO' ? 'ESTIMATED_2P' : `BASED_ON_${tournament.maxPlayersPerRoom || 12}_PER_ROOM`}
                                         </div>
                                     </div>
                                 </div>

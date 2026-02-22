@@ -4,12 +4,14 @@ import roomSchema from '../models/tenant/Room.js';
 import tournamentSchema from '../models/tenant/Tournament.js';
 import squadSchema from '../models/tenant/Squad.js';
 import killsSchema from '../models/tenant/Kills.js'; // Use Kills schema for Players
+import duoSchema from '../models/tenant/Duo.js';
 
 const getModels = (req) => ({
     Room: getTenantModel(req.tenantConnection, 'Room', roomSchema),
     Tournament: getTenantModel(req.tenantConnection, 'Tournament', tournamentSchema),
     Squad: getTenantModel(req.tenantConnection, 'Squad', squadSchema),
-    Player: getTenantModel(req.tenantConnection, 'Kills', killsSchema) // Use Kills model as Player source
+    Player: getTenantModel(req.tenantConnection, 'Kills', killsSchema), // Use Kills model as Player source
+    Duo: getTenantModel(req.tenantConnection, 'Duo', duoSchema)
 });
 
 // Generate Rooms
@@ -115,11 +117,17 @@ export const getRooms = async (req, res) => {
 
         // Populate data based on room mode
         for (const room of rooms) {
-            if (room.mode === 'SQUAD' && room.squads && room.squads.length > 0) {
-                // Populate squad details for SQUAD mode
+            if ((room.mode === 'SQUAD' || room.mode === 'CLASH_SQUAD') && room.squads && room.squads.length > 0) {
+                // Populate squad details for SQUAD / CLASH_SQUAD mode
                 const squadDetails = await Squad.find({ _id: { $in: room.squads } });
                 room.squads = squadDetails;
                 console.log(`📦 Populated ${squadDetails.length} squads for room ${room.roomNumber}`);
+            } else if (room.mode === 'DUO' && room.duos && room.duos.length > 0) {
+                // Populate duo details for DUO mode
+                const Duo = getTenantModel(req.tenantConnection, 'Duo', (await import('../models/tenant/Duo.js')).default);
+                const duoDetails = await Duo.find({ _id: { $in: room.duos } });
+                room.duos = duoDetails;
+                console.log(`👥 Populated ${duoDetails.length} duos for room ${room.roomNumber}`);
             } else if (room.mode === 'SOLO' && room.players && room.players.length > 0) {
                 // Populate player details for SOLO mode
                 const playerDetails = await Player.find({ _id: { $in: room.players } });

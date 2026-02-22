@@ -243,7 +243,7 @@ const RoomManager = () => {
             {loading ? (
                 <div className="text-center py-20 text-cyber-muted animate-pulse font-oswald uppercase tracking-wider">Loading room data...</div>
             ) : (
-                <div className="grid grid-cols-1 gap-6 max-w-6xl mx-auto">
+                <div className="grid grid-cols-1 gap-6 w-full px-4 md:px-8">
                     {rooms.map((room, index) => (
                         <div key={room._id} className="card-cyber relative group">
                             {/* Corner Accents */}
@@ -323,17 +323,17 @@ const RoomManager = () => {
 
                                     <h4 className="text-sm font-oswald font-bold text-cyber-muted mb-4 uppercase tracking-widest flex items-center gap-2">
                                         <Shield className="w-4 h-4 text-cyber-red" />
-                                        Participants ({room.mode === 'SQUAD' ? `${room.squads?.length || 0} Squads` : `${room.players?.length || 0} Players`})
+                                        Participants ({(room.mode === 'SQUAD' || room.mode === 'CLASH_SQUAD') ? `${room.squads?.length || 0} Squads` : room.mode === 'DUO' ? `${room.duos?.length || 0} Duos` : `${room.players?.length || 0} Players`})
                                     </h4>
 
-                                    {room.mode === 'SQUAD' && room.squads?.length > 0 ? (
+                                    {(room.mode === 'SQUAD' || room.mode === 'CLASH_SQUAD') && room.squads?.length > 0 ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {room.squads.map((squad, i) => (
                                                 <div key={i} className="bg-cyber-charcoal/50 p-4 border border-cyber-border hover:border-cyber-pink/50 transition-colors group/squad">
                                                     <div className="flex justify-between items-center mb-3 pb-2 border-b border-cyber-border group-hover/squad:border-cyber-pink/30 transition-colors">
                                                         <span className="font-oswald font-bold text-white uppercase tracking-wide truncate pr-2">{squad.squadName}</span>
                                                         <span className="text-[10px] bg-cyber-black text-cyber-muted px-2 py-0.5 border border-cyber-border font-mono font-bold">
-                                                            {squad.players?.length || 0}/4
+                                                            {squad.players?.length || 0}{room.mode === 'SQUAD' ? '/4' : ''}
                                                         </span>
                                                     </div>
                                                     <div className="space-y-1.5">
@@ -341,6 +341,27 @@ const RoomManager = () => {
                                                             <div key={j} className="flex justify-between items-center text-xs">
                                                                 <span className="text-cyber-muted group-hover/squad:text-gray-300 transition-colors">{player.ffName}</span>
                                                                 <span className="font-mono text-[10px] text-gray-600 group-hover/squad:text-gray-500">{player.ffId}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : room.mode === 'DUO' && room.duos?.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            {room.duos.map((duo, i) => (
+                                                <div key={i} className="bg-cyber-charcoal/50 p-4 border border-cyber-border hover:border-cyber-pink/50 transition-colors group/duo">
+                                                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-cyber-border group-hover/duo:border-cyber-pink/30 transition-colors">
+                                                        <span className="font-oswald font-bold text-white uppercase tracking-wide truncate pr-2">{duo.teamName}</span>
+                                                        <span className="text-[10px] bg-cyber-black text-cyber-muted px-2 py-0.5 border border-cyber-border font-mono font-bold">
+                                                            {duo.players?.length || 0}/2
+                                                        </span>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        {duo.players?.map((player, j) => (
+                                                            <div key={j} className="flex justify-between items-center text-xs">
+                                                                <span className="text-cyber-muted group-hover/duo:text-gray-300 transition-colors">{player.ffName}</span>
+                                                                <span className="font-mono text-[10px] text-gray-600 group-hover/duo:text-gray-500">{player.ffId}</span>
                                                             </div>
                                                         ))}
                                                     </div>

@@ -156,7 +156,7 @@ const PublicRegistration = () => {
 
     if (registered) {
         return (
-            <div className="min-h-screen bg-cyber-black text-white font-inter flex flex-col items-center">
+            <div className="min-h-screen bg-transparent text-white font-inter flex flex-col items-center">
                 <Header />
                 <div className="flex-1 flex flex-col justify-center w-full px-4 mb-20">
                     <div className="card-cyber relative max-w-md w-full mx-auto p-10 text-center overflow-hidden border-2 border-emerald-500/50 shadow-[0_0_50px_rgba(16,185,129,0.2)]">
@@ -220,7 +220,7 @@ const PublicRegistration = () => {
     }
 
     return (
-        <div className="min-h-screen bg-cyber-black text-white font-inter">
+        <div className="min-h-screen bg-transparent text-white font-inter">
             <Header />
             <div className="flex items-center justify-center p-4 min-h-[calc(100vh-140px)]">
                 <div className="card-cyber relative max-w-3xl w-full p-8 md:p-12 overflow-hidden border-2 border-cyber-red/30">

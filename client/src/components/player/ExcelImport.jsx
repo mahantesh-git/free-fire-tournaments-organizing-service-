@@ -3,7 +3,7 @@ import Button from '../common/Button';
 import Card from '../common/Card';
 import { importPlayersFromExcel } from '../../services/playerService';
 
-const ExcelImport = ({ onImportSuccess, tournamentId }) => {
+const ExcelImport = ({ onImportSuccess, tournamentId, tournamentMode }) => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -94,9 +94,28 @@ const ExcelImport = ({ onImportSuccess, tournamentId }) => {
                 <div className="text-sm space-y-2">
                     <div className="text-gray-300 font-semibold mb-2">📋 Excel Format:</div>
                     <div className="text-gray-400">
-                        Required columns: <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue">playerName</code>,
-                        <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue mx-1">ffName</code>,
-                        <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue">ffId</code>
+                        Required columns:
+                        {tournamentMode === 'SQUAD' || tournamentMode === 'CLASH_SQUAD' ? (
+                            <>
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue">Squad Name</code>,
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue mx-1">playerName</code>,
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue mx-1">ffName</code>,
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue">ffId</code>
+                            </>
+                        ) : tournamentMode === 'DUO' ? (
+                            <>
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue">Team Name</code>,
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue mx-1">playerName</code>,
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue mx-1">ffName</code>,
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue">ffId</code>
+                            </>
+                        ) : (
+                            <>
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue">playerName</code>,
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue mx-1">ffName</code>,
+                                <code className="bg-gray-800 px-2 py-1 rounded text-gaming-blue">ffId</code>
+                            </>
+                        )}
                     </div>
                     <div className="text-gray-500 text-xs mt-2">
                         💡 First row should contain column headers

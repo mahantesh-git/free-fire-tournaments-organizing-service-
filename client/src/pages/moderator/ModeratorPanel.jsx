@@ -366,7 +366,7 @@ const ModeratorPanel = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-cyber-black flex items-center justify-center">
+            <div className="min-h-screen bg-transparent flex items-center justify-center">
                 <div className="text-center">
                     <RefreshCw className="w-12 h-12 text-cyber-neon animate-spin mx-auto mb-4" />
                     <p className="text-gray-400 font-mono">ESTABLISHING UPLINK...</p>
@@ -376,14 +376,14 @@ const ModeratorPanel = () => {
     }
 
     return (
-        <div className="min-h-screen bg-cyber-black text-white p-4 md:p-6 font-inter overflow-x-hidden selection:bg-cyber-red selection:text-white relative">
+        <div className="min-h-screen bg-transparent text-white p-4 md:p-6 font-inter overflow-x-hidden selection:bg-cyber-red selection:text-white relative">
             {/* Background Effects */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,rgba(0,240,255,0.05),transparent_50%)]"></div>
                 <div className="absolute inset-0 bg-[url('/grid-pattern.png')] opacity-5"></div>
             </div>
 
-            <div className="relative z-10 max-w-7xl mx-auto pb-32">
+            <div className="relative z-10 w-full px-4 md:px-8 pb-32">
                 {/* Header */}
                 <header className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/5 pb-6">
                     <div>

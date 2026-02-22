@@ -10,8 +10,15 @@ const tournamentSchema = new mongoose.Schema({
     },
     mode: {
         type: String,
-        enum: ['SOLO', 'SQUAD'],
+        enum: ['SOLO', 'DUO', 'SQUAD', 'CLASH_SQUAD', 'CUSTOM'],
         default: 'SQUAD'
+    },
+    // Team size per unit (auto-derived or custom)
+    teamSize: {
+        type: Number,
+        default: 4,
+        min: 1,
+        max: 6
     },
     maxPlayersPerRoom: {
         type: Number,
@@ -42,10 +49,30 @@ const tournamentSchema = new mongoose.Schema({
             default: 'POINTS'
         }
     },
+    // Lock scoring settings once tournament starts
+    settingsLocked: {
+        type: Boolean,
+        default: false
+    },
     createdAt: {
         type: Date,
         default: Date.now
     }
+});
+
+// Auto-set teamSize based on mode before saving
+tournamentSchema.pre('save', function (next) {
+    if (this.isModified('mode') || this.isModified('teamSize')) {
+        const teamSizeMap = {
+            'SOLO': 1,
+            'DUO': 2,
+            'SQUAD': 4,
+            'CLASH_SQUAD': this.teamSize || 4,
+            'CUSTOM': this.teamSize || 4
+        };
+        this.teamSize = teamSizeMap[this.mode] || 4;
+    }
+    next();
 });
 
 export default tournamentSchema;

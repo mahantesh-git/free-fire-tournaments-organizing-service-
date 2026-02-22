@@ -19,7 +19,7 @@ const Home = () => {
     }, []);
 
     return (
-        <div className="min-h-screen bg-cyber-black relative overflow-hidden flex flex-col">
+        <div className="min-h-screen bg-transparent relative overflow-hidden flex flex-col">
             {/* Background Effects */}
             <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyber-red/10 rounded-full blur-[128px] animate-pulse-glow" />

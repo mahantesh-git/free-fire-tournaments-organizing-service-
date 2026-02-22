@@ -149,7 +149,7 @@ const ConductorsPanel = () => {
     };
 
     return (
-        <div className="min-h-screen bg-cyber-black text-white font-inter overflow-x-hidden selection:bg-cyber-red selection:text-white relative">
+        <div className="min-h-screen bg-transparent text-white font-inter overflow-x-hidden selection:bg-cyber-red selection:text-white relative">
             {/* Background Effects */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(0,240,255,0.05),transparent_50%)]"></div>
@@ -159,7 +159,7 @@ const ConductorsPanel = () => {
 
             <Navbar />
 
-            <div className="p-4 md:p-8 pb-32 relative z-10 w-full max-w-7xl mx-auto">
+            <div className="p-4 md:p-8 pb-32 relative z-10 w-full px-4 md:px-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                     {/* Add Conductor Form */}

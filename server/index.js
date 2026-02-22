@@ -18,6 +18,7 @@ import tournamentRoutes from './routes/tournamentRoutes.js';
 import organizerRoutes from './routes/organizerRoutes.js';
 import playerRoutes from './routes/playerRoutes.js';
 import squadRoutes from './routes/squadRoutes.js';
+import duoRoutes from './routes/duoRoutes.js';
 import moderatorRoutes from './routes/moderatorRoutes.js';
 import historyRoutes from './routes/historyRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
@@ -83,6 +84,7 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/squads', squadRoutes);
+app.use('/api/duos', duoRoutes);
 app.use('/api/moderators', moderatorRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/audit', historyRoutes); // Audit routes are also in historyRoutes

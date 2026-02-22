@@ -355,7 +355,9 @@ router.post('/import', upload.single('file'), async (req, res) => {
             return res.status(404).json({ message: 'Tournament not found' });
         }
 
-        if (tournament.mode === 'SQUAD') {
+        console.log(`[Import] Tournament Details: Mode=${tournament.mode}, TeamSize=${tournament.teamSize}`);
+
+        if (tournament.mode === 'SQUAD' || tournament.mode === 'CLASH_SQUAD') {
             // Group by Squad Name
             const squadsMap = {};
             data.forEach(row => {
@@ -364,20 +366,33 @@ router.post('/import', upload.single('file'), async (req, res) => {
 
                 if (!squadsMap[sName]) squadsMap[sName] = [];
                 squadsMap[sName].push({
-                    playerName: row.playerName || row.Username || row.name,
+                    playerName: row.playerName || row['Player Name'] || row.Username || row.name,
                     ffName: row.ffName || row['FF Name'] || row.ffname,
                     ffId: String(row.ffId || row['FF ID'] || row.ffid || row.ffud)
                 });
             });
 
+            console.log(`[Import] Parsed Data:`, data.slice(0, 2));
+            console.log(`[Import] Mapped Squads:`, Object.keys(squadsMap));
+
             const squadsToInsert = [];
             const errors = [];
 
             for (const [name, players] of Object.entries(squadsMap)) {
-                if (players.length !== 4) {
-                    errors.push(`Squad "${name}" has ${players.length} players (Required: 4)`);
-                    continue;
+                if (tournament.mode === 'CLASH_SQUAD') {
+                    // Clash Squad team size is customizable per tournament (typically 4, 5, or 6)
+                    const expectedSize = tournament.teamSize || 4;
+                    if (players.length !== expectedSize) {
+                        errors.push(`CLASH SQUAD "${name}" has ${players.length} players (Required: exactly ${expectedSize})`);
+                        continue;
+                    }
+                } else {
+                    if (players.length !== 4) {
+                        errors.push(`Squad "${name}" has ${players.length} players (Required: exactly 4)`);
+                        continue;
+                    }
                 }
+
                 squadsToInsert.push({
                     squadName: name,
                     tournamentId,
@@ -395,6 +410,56 @@ router.post('/import', upload.single('file'), async (req, res) => {
             if (req.file) fs.unlinkSync(req.file.path);
             return res.json({
                 message: errors.length > 0 ? "Imported with some errors" : "Squads imported successfully",
+                count: inserted.length,
+                errors: errors.length > 0 ? errors : undefined
+            });
+
+        } else if (tournament.mode === 'DUO') {
+            // DUO MODE
+            const Duo = getTenantModel(req.tenantConnection, 'Duo', (await import('../models/tenant/Duo.js')).default);
+            // Group by Team Name
+            const duosMap = {};
+            data.forEach(row => {
+                const tName = row.teamName || row['Team Name'] || row.teamname || row.squadName || row['Squad Name'];
+                if (!tName) return;
+
+                if (!duosMap[tName]) duosMap[tName] = [];
+                duosMap[tName].push({
+                    playerName: row.playerName || row.Username || row.name,
+                    ffName: row.ffName || row['FF Name'] || row.ffname,
+                    ffId: String(row.ffId || row['FF ID'] || row.ffid || row.ffud)
+                });
+            });
+
+            const duosToInsert = [];
+            const errors = [];
+
+            for (const [name, players] of Object.entries(duosMap)) {
+                if (players.length !== 2) {
+                    errors.push(`Duo "${name}" has ${players.length} players (Required: 2)`);
+                    continue;
+                }
+
+                duosToInsert.push({
+                    teamName: name,
+                    tournamentId,
+                    players: players.map(p => ({
+                        ...p,
+                        map1: 0, map2: 0, map3: 0, total: 0
+                    }))
+                });
+            }
+
+            if (errors.length > 0 && duosToInsert.length === 0) {
+                if (req.file) fs.unlinkSync(req.file.path);
+                return res.status(400).json({ message: 'Validation failed', errors });
+            }
+
+            const inserted = await Duo.insertMany(duosToInsert, { ordered: false }).catch(err => err.insertedDocs || []);
+
+            if (req.file) fs.unlinkSync(req.file.path);
+            return res.json({
+                message: errors.length > 0 ? "Imported with some errors" : "Duo teams imported successfully",
                 count: inserted.length,
                 errors: errors.length > 0 ? errors : undefined
             });

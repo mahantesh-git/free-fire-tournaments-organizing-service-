@@ -33,7 +33,7 @@ const LiveScoreboard = () => {
 
     if (!mode) {
         return (
-            <div className="min-h-screen bg-cyber-black flex items-center justify-center text-white">
+            <div className="min-h-screen bg-transparent flex items-center justify-center text-white">
                 <div className="text-center font-oswald uppercase relative z-10">
                     <h2 className="text-4xl font-black mb-4">Link Error</h2>
                     <p className="text-cyber-muted tracking-widest">Tournament record not found in central database.</p>
@@ -42,7 +42,12 @@ const LiveScoreboard = () => {
         );
     }
 
-    return mode === 'SQUAD' ? <SquadScoreboard isAudience={true} /> : <IndividualScoreboard isAudience={true} />;
+    // DUO teams use SquadGameState model, so they render on SquadScoreboard
+    // CLASH_SQUAD also uses squad-based display
+    if (mode === 'SQUAD' || mode === 'DUO' || mode === 'CLASH_SQUAD') {
+        return <SquadScoreboard isAudience={true} />;
+    }
+    return <IndividualScoreboard isAudience={true} />;
 };
 
 export default LiveScoreboard;

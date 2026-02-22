@@ -16,7 +16,7 @@ const roomSchema = new mongoose.Schema({
     },
     mode: {
         type: String,
-        enum: ['SOLO', 'SQUAD'],
+        enum: ['SOLO', 'DUO', 'SQUAD', 'CLASH_SQUAD'],
         required: true
     },
 
@@ -25,6 +25,10 @@ const roomSchema = new mongoose.Schema({
     squads: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Squad'
+    }],
+    duos: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Duo'
     }],
     players: [{
         type: mongoose.Schema.Types.ObjectId,

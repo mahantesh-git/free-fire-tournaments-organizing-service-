@@ -13,7 +13,16 @@
 body {
   font-family: 'Inter', 'Rajdhani', sans-serif;
   overflow-x: hidden;
-  background: #0F0F0F;
+  background-color: #050505;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(255, 59, 59, 0.15), transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.12), transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.08), transparent 60%),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 50px 50px, 50px 50px;
+  background-position: 0 0, 0 0, 0 0, -1px -1px, -1px -1px;
+  background-attachment: fixed;
   color: #ffffff;
 }
 

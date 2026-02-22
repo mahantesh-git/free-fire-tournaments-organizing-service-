@@ -58,8 +58,23 @@ export const getTournamentById = async (req, res) => {
 export const updateTournament = async (req, res) => {
     try {
         const Tournament = getTenantModel(req.tenantConnection, 'Tournament', tournamentSchema);
-        const tournament = await Tournament.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        res.json({ success: true, tournament });
+        const tournament = await Tournament.findById(req.params.id);
+        if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
+
+        // Scoring config lock: prevent settings changes if tournament is not OPEN
+        if (req.body.settings && tournament.status !== 'OPEN') {
+            return res.status(400).json({
+                error: 'Scoring configuration cannot be changed after the tournament has started. Current status: ' + tournament.status
+            });
+        }
+
+        // If status is changing to ONGOING, lock settings
+        if (req.body.status === 'ONGOING' && tournament.status === 'OPEN') {
+            req.body.settingsLocked = true;
+        }
+
+        const updated = await Tournament.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.json({ success: true, tournament: updated });
     } catch (error) {
         if (error.code === 11000) {
             return res.status(400).json({ error: 'A tournament with this name already exists' });

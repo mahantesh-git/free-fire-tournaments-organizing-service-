@@ -13,8 +13,38 @@ const OrganizerDashboard = () => {
         mode: 'SQUAD',
         maxPlayersPerRoom: 48,
         rankingSort: 'POINTS',
-        killPoints: 1
+        killPoints: 1,
+        teamSize: 4 // For clash squad 4v4, 5v5, 6v6
     });
+
+    const handleModeChange = (newMode) => {
+        let defaultMax = 48;
+        let defaultTeamSize = 4;
+
+        if (newMode === 'CLASH_SQUAD') {
+            defaultMax = 8; // 4v4 default
+            defaultTeamSize = 4;
+        }
+        if (newMode === 'DUO') {
+            defaultMax = 48;
+            defaultTeamSize = 2;
+        }
+        if (newMode === 'SOLO') {
+            defaultMax = 48;
+            defaultTeamSize = 1;
+        }
+        if (newMode === 'SQUAD') {
+            defaultMax = 48;
+            defaultTeamSize = 4;
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            mode: newMode,
+            maxPlayersPerRoom: defaultMax,
+            teamSize: defaultTeamSize
+        }));
+    };
 
     const navigate = useNavigate();
 
@@ -48,7 +78,7 @@ const OrganizerDashboard = () => {
             };
             await api.post('/api/tournaments', payload);
             setShowModal(false);
-            setFormData({ name: '', mode: 'SQUAD', maxPlayersPerRoom: 48, rankingSort: 'POINTS', killPoints: 1 });
+            setFormData({ name: '', mode: 'SQUAD', maxPlayersPerRoom: 48, rankingSort: 'POINTS', killPoints: 1, teamSize: 4 });
             toast.success('Tournament created successfully!', { id: 'create-tournament-success' });
             fetchTournaments();
         } catch (error) {
@@ -57,7 +87,7 @@ const OrganizerDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-cyber-black text-white font-inter">
+        <div className="min-h-screen bg-transparent text-white font-inter">
             {/* Cyberpunk Header */}
             <header className="bg-cyber-charcoal border-b-2 border-cyber-red px-6 py-4 flex justify-between items-center shadow-lg">
                 <div className="flex items-center space-x-3">
@@ -76,7 +106,7 @@ const OrganizerDashboard = () => {
                 </button>
             </header>
 
-            <main className="p-6 max-w-7xl mx-auto">
+            <main className="p-6 w-full px-4 md:px-8">
                 {/* Action Bar */}
                 <div className="flex justify-between items-center mb-8">
                     <h2 className="text-4xl font-oswald font-black uppercase tracking-wider text-white">My Tournaments</h2>
@@ -192,49 +222,82 @@ const OrganizerDashboard = () => {
                                     <select
                                         className="input-cyber w-full"
                                         value={formData.mode}
-                                        onChange={e => setFormData({ ...formData, mode: e.target.value })}
+                                        onChange={e => handleModeChange(e.target.value)}
                                     >
                                         <option value="SQUAD">Squad (4 Players)</option>
+                                        <option value="DUO">Duo (2 Players)</option>
                                         <option value="SOLO">Solo (1 Player)</option>
+                                        <option value="CLASH_SQUAD">Clash Squad (4v4)</option>
+                                        <option value="CUSTOM">Custom</option>
                                     </select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                {formData.mode !== 'CLASH_SQUAD' && (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="block text-xs text-cyber-muted mb-2 font-oswald uppercase tracking-wider">Sort By</label>
+                                            <select
+                                                className="input-cyber w-full text-xs"
+                                                value={formData.rankingSort}
+                                                onChange={e => setFormData({ ...formData, rankingSort: e.target.value })}
+                                            >
+                                                <option value="POINTS">Points</option>
+                                                <option value="KILLS">Kills</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-cyber-muted mb-2 font-oswald uppercase tracking-wider">Kill Pts</label>
+                                            <input
+                                                type="number"
+                                                className="input-cyber w-full text-xs"
+                                                value={formData.killPoints}
+                                                onChange={e => setFormData({ ...formData, killPoints: e.target.value })}
+                                                min="0"
+                                                step="0.5"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {formData.mode !== 'CLASH_SQUAD' && (
+                                <div>
+                                    <label className="block text-xs text-cyber-muted mb-2 font-oswald uppercase tracking-wider">Max Players Per Room</label>
+                                    <input
+                                        type="number"
+                                        className="input-cyber w-full"
+                                        value={formData.maxPlayersPerRoom}
+                                        onChange={e => setFormData({ ...formData, maxPlayersPerRoom: parseInt(e.target.value) })}
+                                        min="1"
+                                        max="100"
+                                    />
+                                    <p className="text-xs text-cyber-muted mt-1">Default 48 for standard lobbies</p>
+                                </div>
+                            )}
+
+                            {formData.mode === 'CLASH_SQUAD' && (
+                                <div className="space-y-4">
                                     <div>
-                                        <label className="block text-xs text-cyber-muted mb-2 font-oswald uppercase tracking-wider">Sort By</label>
+                                        <label className="block text-xs text-cyber-muted mb-2 font-oswald uppercase tracking-wider">Team Size (vV)</label>
                                         <select
-                                            className="input-cyber w-full text-xs"
-                                            value={formData.rankingSort}
-                                            onChange={e => setFormData({ ...formData, rankingSort: e.target.value })}
+                                            className="input-cyber w-full"
+                                            value={formData.teamSize}
+                                            onChange={e => {
+                                                const newSize = parseInt(e.target.value);
+                                                setFormData({ ...formData, teamSize: newSize, maxPlayersPerRoom: newSize * 2 });
+                                            }}
                                         >
-                                            <option value="POINTS">Points</option>
-                                            <option value="KILLS">Kills</option>
+                                            <option value="4">4v4 (8 Players per room)</option>
+                                            <option value="5">5v5 (10 Players per room)</option>
+                                            <option value="6">6v6 (12 Players per room)</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs text-cyber-muted mb-2 font-oswald uppercase tracking-wider">Kill Pts</label>
-                                        <input
-                                            type="number"
-                                            className="input-cyber w-full text-xs"
-                                            value={formData.killPoints}
-                                            onChange={e => setFormData({ ...formData, killPoints: e.target.value })}
-                                            min="0"
-                                            step="0.5"
-                                        />
+                                    <div className="p-3 bg-cyber-charcoal border border-cyber-border rounded">
+                                        <p className="text-xs text-cyber-muted font-oswald uppercase tracking-wider text-center">
+                                            Clash Squad automatically assigns exactly 2 squads per room. Points sorting is disabled.
+                                        </p>
                                     </div>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs text-cyber-muted mb-2 font-oswald uppercase tracking-wider">Max Players Per Room</label>
-                                <input
-                                    type="number"
-                                    className="input-cyber w-full"
-                                    value={formData.maxPlayersPerRoom}
-                                    onChange={e => setFormData({ ...formData, maxPlayersPerRoom: parseInt(e.target.value) })}
-                                    min="1"
-                                    max="100"
-                                />
-                                <p className="text-xs text-cyber-muted mt-1">Default 48 for standard lobbies</p>
-                            </div>
+                            )}
                             <div className="flex justify-end space-x-3 mt-6">
                                 <button
                                     type="button"

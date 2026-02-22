@@ -76,7 +76,7 @@ router.get('/tournament/:tournamentId/overview', async (req, res) => {
                     totalMatches,
                     totalKills,
                     averageMatchDuration,
-                    totalParticipants: tournamentHistory?.statistics?.totalSquads || 0
+                    totalParticipants: leaderboard.length || (tournamentHistory?.statistics?.totalSquads || 0)
                 },
                 leaderboard,
                 topKillers: topKillersArray,

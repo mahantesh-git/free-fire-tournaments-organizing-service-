@@ -16,6 +16,7 @@ const PlayerRegistration = () => {
     const [players, setPlayers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [squads, setSquads] = useState([]);
+    const [duos, setDuos] = useState([]);
     const [activeTab, setActiveTab] = useState('manual');
 
     const [formData, setFormData] = useState({
@@ -29,6 +30,14 @@ const PlayerRegistration = () => {
         players: [
             { playerName: '', ffName: '', ffId: '' },
             { playerName: '', ffName: '', ffId: '' },
+            { playerName: '', ffName: '', ffId: '' },
+            { playerName: '', ffName: '', ffId: '' }
+        ]
+    });
+
+    const [duoData, setDuoData] = useState({
+        teamName: '',
+        players: [
             { playerName: '', ffName: '', ffId: '' },
             { playerName: '', ffName: '', ffId: '' }
         ]
@@ -52,6 +61,25 @@ const PlayerRegistration = () => {
         }
     }, [tournamentId]);
 
+    // Update squad player count when tournament details load
+    useEffect(() => {
+        if (tournament && (tournament.mode === 'SQUAD' || tournament.mode === 'CLASH_SQUAD')) {
+            const requiredSize = tournament.teamSize || 4;
+            setSquadData(prev => {
+                if (prev.players.length === requiredSize) return prev;
+
+                const newPlayers = [...prev.players];
+                while (newPlayers.length < requiredSize) {
+                    newPlayers.push({ playerName: '', ffName: '', ffId: '' });
+                }
+                if (newPlayers.length > requiredSize) {
+                    newPlayers.length = requiredSize;
+                }
+                return { ...prev, players: newPlayers };
+            });
+        }
+    }, [tournament]);
+
     useEffect(() => {
         if (tournamentId && tournament) {
             loadPlayers();
@@ -72,10 +100,14 @@ const PlayerRegistration = () => {
     const loadPlayers = async () => {
         setLoading(true);
         try {
-            if (tournament?.mode === 'SQUAD') {
+            if (tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD') {
                 const res = await api.get(`/api/kills/getSquads?tournamentId=${tournamentId}`);
                 const squadData = res.data.squads || (Array.isArray(res.data) ? res.data : []);
                 setSquads(squadData);
+            } else if (tournament?.mode === 'DUO') {
+                const res = await api.get(`/api/duos?tournamentId=${tournamentId}`);
+                const duoList = res.data.duos || [];
+                setDuos(duoList);
             } else {
                 const res = await getPlayers(tournamentId);
                 const playerData = res.players || (Array.isArray(res) ? res : []);
@@ -93,16 +125,24 @@ const PlayerRegistration = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            if (tournament?.mode === 'SQUAD') {
+            if (tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD') {
                 // Register squad
                 const res = await api.post('/api/kills/squadRegister', { ...squadData, tournamentId });
                 if (res.data.success) {
                     Toast.success('Squad registered successfully!');
                     setSquadData({
                         squadName: '',
+                        players: Array(tournament?.teamSize || 4).fill({ playerName: '', ffName: '', ffId: '' })
+                    });
+                }
+            } else if (tournament?.mode === 'DUO') {
+                // Register duo
+                const res = await api.post('/api/duos/register', { ...duoData, tournamentId });
+                if (res.data.success) {
+                    Toast.success('Duo team registered successfully!');
+                    setDuoData({
+                        teamName: '',
                         players: [
-                            { playerName: '', ffName: '', ffId: '' },
-                            { playerName: '', ffName: '', ffId: '' },
                             { playerName: '', ffName: '', ffId: '' },
                             { playerName: '', ffName: '', ffId: '' }
                         ]
@@ -129,15 +169,24 @@ const PlayerRegistration = () => {
         setSquadData({ ...squadData, players: newPlayers });
     };
 
+    // We no longer need Add/Remove substitute logic since teamSize is fixed per tournament.
+    // The number of slots is strictly based on `tournament.teamSize`.
+
+    const handleDuoPlayerChange = (index, field, value) => {
+        const newPlayers = [...duoData.players];
+        newPlayers[index] = { ...newPlayers[index], [field]: value };
+        setDuoData({ ...duoData, players: newPlayers });
+    };
+
     const handleExport = () => {
         exportPlayersToExcel(tournamentId);
     };
 
     return (
-        <div className="min-h-screen bg-cyber-black text-white font-inter">
+        <div className="min-h-screen bg-transparent text-white font-inter">
             {/* Navbar Placeholder if not fully integrated yet, referencing previous style */}
             <div className="border-b border-cyber-border bg-cyber-charcoal px-6 py-4 shadow-lg mb-8">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
+                <div className="w-full flex items-center justify-between">
                     <h1 className="text-xl font-oswald font-bold tracking-wider text-white uppercase">
                         <span className="text-cyber-red">ADMIN</span> PANEL
                     </h1>
@@ -147,21 +196,25 @@ const PlayerRegistration = () => {
                 </div>
             </div>
 
-            <div className="p-4 md:p-8 max-w-7xl mx-auto block">
+            <div className="p-4 md:p-8 w-full block">
                 <div className="mb-12 text-center relative">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-24 bg-cyber-red/20 blur-[100px] -z-10"></div>
                     <h1 className="text-5xl md:text-7xl font-black text-white mb-4 font-oswald uppercase tracking-wide leading-none">
-                        {tournament?.mode === 'SQUAD' ? (
+                        {tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD' ? (
                             <>SQUAD <span className="text-stroke-cyber-red text-transparent">MANAGEMENT</span></>
+                        ) : tournament?.mode === 'DUO' ? (
+                            <>DUO <span className="text-stroke-cyber-red text-transparent">MANAGEMENT</span></>
                         ) : (
                             <>Player <span className="text-stroke-cyber-red text-transparent">Registration</span></>
                         )}
                     </h1>
                     <div className="h-1 w-24 bg-cyber-red mx-auto mb-6"></div>
                     <p className="text-cyber-muted uppercase tracking-[0.3em] text-sm font-oswald font-bold">
-                        {tournament?.mode === 'SQUAD'
+                        {tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD'
                             ? 'Register squads of 4 or track tournament entries'
-                            : 'Register competitors individually or bulk import via Excel'}
+                            : tournament?.mode === 'DUO'
+                                ? 'Register duo teams of 2 or track tournament entries'
+                                : 'Register competitors individually or bulk import via Excel'}
                     </p>
                 </div>
 
@@ -203,7 +256,7 @@ const PlayerRegistration = () => {
 
                         {activeTab === 'manual' && (
                             <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
-                                {tournament?.mode === 'SQUAD' ? (
+                                {tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD' ? (
                                     <div className="space-y-6">
                                         <div>
                                             <label className="block text-xs font-oswald font-bold text-cyber-red uppercase tracking-widest mb-2">Squad Handle</label>
@@ -226,19 +279,70 @@ const PlayerRegistration = () => {
                                                         value={player.playerName}
                                                         onChange={(e) => handleSquadPlayerChange(index, 'playerName', e.target.value)}
                                                         placeholder="ALIAS"
+                                                        required={index < 4} // Only first 4 are strictly required
+                                                        className="w-full bg-cyber-black border border-cyber-border px-3 py-2 text-xs text-white focus:outline-none focus:border-cyber-red transition-colors uppercase mt-4"
+                                                    />
+                                                    <input
+                                                        value={player.ffName}
+                                                        onChange={(e) => handleSquadPlayerChange(index, 'ffName', e.target.value)}
+                                                        placeholder="IGN"
+                                                        required={index < 4} // Only first 4 are strictly required
+                                                        className="w-full bg-cyber-black border border-cyber-border px-3 py-2 text-xs text-white focus:outline-none focus:border-cyber-red transition-colors uppercase"
+                                                    />
+                                                    <input
+                                                        value={player.ffId}
+                                                        onChange={(e) => handleSquadPlayerChange(index, 'ffId', e.target.value)}
+                                                        placeholder="UID"
+                                                        required={index < 4} // Only first 4 are strictly required
+                                                        className="w-full bg-cyber-black border border-cyber-border px-3 py-2 text-xs text-white focus:outline-none focus:border-cyber-red transition-colors font-mono"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="btn-cyber-primary w-full shadow-lg shadow-cyber-red/20 py-4 text-lg"
+                                        >
+                                            {loading ? 'REGISTERING SQUAD...' : 'CONFIRM SQUAD REGISTRATION'}
+                                        </button>
+                                    </div>
+                                ) : tournament?.mode === 'DUO' ? (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-xs font-oswald font-bold text-cyber-red uppercase tracking-widest mb-2">Duo Team Name</label>
+                                            <input
+                                                value={duoData.teamName}
+                                                onChange={(e) => setDuoData({ ...duoData, teamName: e.target.value })}
+                                                placeholder="TEAM NAME"
+                                                required
+                                                className="input-cyber w-full"
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {duoData.players.map((player, index) => (
+                                                <div key={index} className="space-y-3 p-3 bg-cyber-charcoal border border-cyber-border relative group">
+                                                    <div className="absolute top-0 right-0 bg-cyber-border text-cyber-muted px-2 py-0.5 text-[10px] font-bold font-oswald uppercase">
+                                                        P0{index + 1}
+                                                    </div>
+                                                    <input
+                                                        value={player.playerName}
+                                                        onChange={(e) => handleDuoPlayerChange(index, 'playerName', e.target.value)}
+                                                        placeholder="ALIAS"
                                                         required
                                                         className="w-full bg-cyber-black border border-cyber-border px-3 py-2 text-xs text-white focus:outline-none focus:border-cyber-red transition-colors uppercase"
                                                     />
                                                     <input
                                                         value={player.ffName}
-                                                        onChange={(e) => handleSquadPlayerChange(index, 'ffName', e.target.value)}
+                                                        onChange={(e) => handleDuoPlayerChange(index, 'ffName', e.target.value)}
                                                         placeholder="IGN"
                                                         required
                                                         className="w-full bg-cyber-black border border-cyber-border px-3 py-2 text-xs text-white focus:outline-none focus:border-cyber-red transition-colors uppercase"
                                                     />
                                                     <input
                                                         value={player.ffId}
-                                                        onChange={(e) => handleSquadPlayerChange(index, 'ffId', e.target.value)}
+                                                        onChange={(e) => handleDuoPlayerChange(index, 'ffId', e.target.value)}
                                                         placeholder="UID"
                                                         required
                                                         className="w-full bg-cyber-black border border-cyber-border px-3 py-2 text-xs text-white focus:outline-none focus:border-cyber-red transition-colors font-mono"
@@ -288,17 +392,25 @@ const PlayerRegistration = () => {
                                         loading={loading}
                                         className="flex-1"
                                     >
-                                        {tournament?.mode === 'SQUAD' ? 'REGISTER SQUAD' : 'REGISTER PLAYER'}
+                                        {tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD' ? 'REGISTER SQUAD' : tournament?.mode === 'DUO' ? 'REGISTER DUO' : 'REGISTER PLAYER'}
                                     </Button>
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            if (tournament?.mode === 'SQUAD') {
+                                            if (tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD') {
                                                 setSquadData({
                                                     squadName: '',
                                                     players: [
                                                         { playerName: '', ffName: '', ffId: '' },
                                                         { playerName: '', ffName: '', ffId: '' },
+                                                        { playerName: '', ffName: '', ffId: '' },
+                                                        { playerName: '', ffName: '', ffId: '' }
+                                                    ]
+                                                });
+                                            } else if (tournament?.mode === 'DUO') {
+                                                setDuoData({
+                                                    teamName: '',
+                                                    players: [
                                                         { playerName: '', ffName: '', ffId: '' },
                                                         { playerName: '', ffName: '', ffId: '' }
                                                     ]
@@ -317,7 +429,7 @@ const PlayerRegistration = () => {
 
                         {activeTab === 'import' && (
                             <div className="py-8 animate-fade-in">
-                                <ExcelImport onImportSuccess={loadPlayers} tournamentId={tournamentId} />
+                                <ExcelImport onImportSuccess={loadPlayers} tournamentId={tournamentId} tournamentMode={tournament?.mode} />
 
                             </div>
                         )}
@@ -327,21 +439,55 @@ const PlayerRegistration = () => {
                     <div className="card-cyber p-0 relative overflow-hidden flex flex-col h-[600px] border-t-4 border-t-cyber-purple">
                         <div className="p-6 border-b border-cyber-border bg-cyber-charcoal flex justify-between items-center">
                             <h2 className="text-xl font-oswald font-bold text-white uppercase tracking-wider flex items-center gap-3">
-                                {tournament?.mode === 'SQUAD' ? (
+                                {tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD' ? (
                                     <Shield className="w-5 h-5 text-cyber-purple" />
+                                ) : tournament?.mode === 'DUO' ? (
+                                    <Users className="w-5 h-5 text-cyber-purple" />
                                 ) : (
                                     <Users className="w-5 h-5 text-cyber-purple" />
                                 )}
-                                {tournament?.mode === 'SQUAD' ? 'Squad Database' : 'Player Database'}
+                                {tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD' ? 'Squad Database' : tournament?.mode === 'DUO' ? 'Duo Database' : 'Player Database'}
                             </h2>
                             <div className="font-mono text-cyber-purple font-bold bg-cyber-black px-3 py-1 border border-cyber-border text-sm">
-                                {tournament?.mode === 'SQUAD' ? squads.length : players.length} RECORDS
+                                {tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD' ? squads.length : tournament?.mode === 'DUO' ? duos.length : players.length} RECORDS
                             </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-cyber-black/50">
-                            {tournament?.mode === 'SQUAD' ? (
+                            {tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD' ? (
                                 <SquadList squads={squads} onUpdate={loadPlayers} tournamentId={tournamentId} />
+                            ) : tournament?.mode === 'DUO' ? (
+                                <div className="space-y-3">
+                                    {duos.length === 0 && <p className="text-cyber-muted text-center py-8 font-oswald uppercase tracking-wider">No duo teams registered yet</p>}
+                                    {duos.map((duo) => (
+                                        <div key={duo._id} className="bg-cyber-charcoal border border-cyber-border p-4 flex justify-between items-start">
+                                            <div>
+                                                <div className="font-oswald font-bold text-cyber-red uppercase tracking-wider text-sm mb-2">{duo.teamName}</div>
+                                                <div className="space-y-1">
+                                                    {duo.players.map((p, i) => (
+                                                        <div key={i} className="text-xs text-cyber-muted">
+                                                            <span className="text-white font-bold">P0{i + 1}</span> {p.playerName} · <span className="font-mono">{p.ffId}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        await api.delete(`/api/duos/${duo._id}`);
+                                                        Toast.success('Duo deleted');
+                                                        loadPlayers();
+                                                    } catch (err) {
+                                                        Toast.error('Failed to delete duo');
+                                                    }
+                                                }}
+                                                className="text-cyber-muted hover:text-cyber-red transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             ) : (
                                 <PlayerList players={players} onUpdate={loadPlayers} />
                             )}
@@ -350,7 +496,7 @@ const PlayerRegistration = () => {
                         <div className="p-6 border-t border-cyber-border bg-cyber-charcoal">
                             <button
                                 onClick={handleExport}
-                                disabled={(tournament?.mode === 'SQUAD' ? squads.length : players.length) === 0}
+                                disabled={(tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD' ? squads.length : tournament?.mode === 'DUO' ? duos.length : players.length) === 0}
                                 className="w-full btn-cyber-secondary flex items-center justify-center gap-2 py-4"
                             >
                                 <Download className="w-4 h-4" />
@@ -362,7 +508,7 @@ const PlayerRegistration = () => {
 
 
             </div>
-        </div>
+        </div >
     );
 };
 

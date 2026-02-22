@@ -19,7 +19,6 @@ const matchHistorySchema = new mongoose.Schema({
     },
     mode: {
         type: String,
-        enum: ['SOLO', 'SQUAD'],
         required: true
     },
 
