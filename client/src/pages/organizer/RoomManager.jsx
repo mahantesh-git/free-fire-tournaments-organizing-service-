@@ -47,8 +47,8 @@ const RoomManager = () => {
                 setRooms(res.data.rooms);
             }
 
-            // Fetch total squads to detect unassigned ones
-            const squadRes = await api.get('/api/squads');
+            // Fetch total squads to detect unassigned ones for THIS tournament
+            const squadRes = await api.get(`/api/squads?tournamentId=${tournamentId}`);
             if (squadRes.data.success) {
                 setTotalSquads(squadRes.data.squads.length);
             }
@@ -156,7 +156,7 @@ const RoomManager = () => {
             </header>
 
             {/* Unassigned Squads Warning */}
-            {!loading && totalSquads > 0 && (
+            {!loading && totalSquads > rooms.reduce((acc, r) => acc + (r.squads?.length || 0) + (r.players?.length || 0), 0) && (
                 <div className="mb-8 bg-cyber-card border-l-4 border-cyber-pink p-6 flex items-center justify-between gap-4 animate-fade-in shadow-xl relative overflow-hidden">
                     <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-cyber-pink/10 to-transparent pointer-events-none"></div>
                     <div className="flex items-center gap-4 relative z-10">
@@ -167,15 +167,13 @@ const RoomManager = () => {
                             <h4 className="font-oswald font-bold text-white text-lg uppercase tracking-wider">Squad Mismatch Detected</h4>
                             <p className="text-sm text-cyber-muted font-inter">
                                 You have <span className="text-cyber-pink font-bold">{totalSquads}</span> registered squads,
-                                but only <span className="text-cyber-pink font-bold">{rooms.reduce((acc, r) => acc + (r.squads?.length || 0), 0)}</span> are assigned to rooms.
+                                but only <span className="text-cyber-pink font-bold">{rooms.reduce((acc, r) => acc + (r.squads?.length || 0) + (r.players?.length || 0), 0)}</span> are assigned to rooms.
                             </p>
                         </div>
                     </div>
-                    {totalSquads > rooms.reduce((acc, r) => acc + (r.squads?.length || 0), 0) && (
-                        <div className="hidden md:block text-xs text-cyber-pink font-oswald uppercase tracking-widest animate-pulse border-b border-cyber-pink pb-1">
-                            Action Required: Auto-Generate Rooms
-                        </div>
-                    )}
+                    <div className="hidden md:block text-xs text-cyber-pink font-oswald uppercase tracking-widest animate-pulse border-b border-cyber-pink pb-1">
+                        Action Required: Auto-Generate Rooms
+                    </div>
                 </div>
             )}
 

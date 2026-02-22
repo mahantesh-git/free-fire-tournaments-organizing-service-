@@ -79,8 +79,15 @@ export const registerSquad = async (req, res) => {
 // Get all squads
 export const getSquads = async (req, res) => {
     try {
+        const { tournamentId } = req.query;
         const Squad = getTenantModel(req.tenantConnection, 'Squad', squadSchema);
-        const squads = await Squad.find().populate('players').sort({ registeredAt: -1 });
+
+        const query = {};
+        if (tournamentId) {
+            query.tournamentId = tournamentId;
+        }
+
+        const squads = await Squad.find(query).populate('players').sort({ registeredAt: -1 });
         res.json({ success: true, squads });
     } catch (error) {
         res.status(500).json({ error: error.message });

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
-import QRDisplayModal from '../components/player/QRDisplayModal';
 import ExcelImport from '../components/player/ExcelImport';
 import PlayerList from '../components/player/PlayerList';
 import SquadList from '../components/player/SquadList';
@@ -18,7 +17,6 @@ const PlayerRegistration = () => {
     const [loading, setLoading] = useState(true);
     const [squads, setSquads] = useState([]);
     const [activeTab, setActiveTab] = useState('manual');
-    const [showQRDisplay, setShowQRDisplay] = useState(false);
 
     const [formData, setFormData] = useState({
         playerName: '',
@@ -320,15 +318,7 @@ const PlayerRegistration = () => {
                         {activeTab === 'import' && (
                             <div className="py-8 animate-fade-in">
                                 <ExcelImport onImportSuccess={loadPlayers} tournamentId={tournamentId} />
-                                <div className="mt-8 text-center">
-                                    <p className="text-cyber-muted text-xs font-oswald uppercase tracking-wider mb-4">Need a template?</p>
-                                    <button
-                                        onClick={() => setShowQRDisplay(true)}
-                                        className="text-cyber-pink hover:text-white border-b border-cyber-pink hover:border-white transition-colors font-bold uppercase text-xs tracking-widest pb-1"
-                                    >
-                                        View QR Format Guide
-                                    </button>
-                                </div>
+
                             </div>
                         )}
                     </div>
@@ -370,10 +360,7 @@ const PlayerRegistration = () => {
                     </div>
                 </div>
 
-                <QRDisplayModal
-                    isOpen={showQRDisplay}
-                    onClose={() => setShowQRDisplay(false)}
-                />
+
             </div>
         </div>
     );

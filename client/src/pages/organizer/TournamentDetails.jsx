@@ -260,13 +260,15 @@ const TournamentDetails = () => {
                                             <Users className="w-12 h-12 text-white" />
                                         </div>
                                         <div className="text-cyber-muted text-xs font-oswald uppercase tracking-widest mb-2">
-                                            {tournament.mode === 'SQUAD' ? 'Total Players' : 'Potential Squads'}
+                                            {tournament.mode === 'SQUAD' ? 'Total Players' : 'Rooms Needed'}
                                         </div>
                                         <div className="text-4xl font-oswald font-black text-white">
-                                            {tournament.mode === 'SQUAD' ? playerCount * 4 : Math.floor(playerCount / 4)}
+                                            {tournament.mode === 'SQUAD'
+                                                ? playerCount * 4
+                                                : Math.ceil(playerCount / (tournament.maxPlayersPerRoom || 12))}
                                         </div>
                                         <div className="text-cyber-muted/50 text-xs mt-2 font-mono">
-                                            {tournament.mode === 'SQUAD' ? 'ESTIMATED_4P' : 'FULL_SQUADS_4P'}
+                                            {tournament.mode === 'SQUAD' ? 'ESTIMATED_4P' : `BASED_ON_${tournament.maxPlayersPerRoom || 12}_PER_ROOM`}
                                         </div>
                                     </div>
                                 </div>
