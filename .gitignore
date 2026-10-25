@@ -13,7 +13,8 @@ yarn-error.log*
 .vs/
 .env.local
 .env.*
-tests/*
+client/tests/*
+client/tests/*
 docs/*
 .agent/*
 system_flow.html
