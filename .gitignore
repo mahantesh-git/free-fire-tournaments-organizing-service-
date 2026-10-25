@@ -13,9 +13,9 @@ yarn-error.log*
 .vs/
 .env.local
 .env.*
-client/tests/*
-client/tests/*
-docs/*
-.agent/*
+tests/
+client/tests/
+docs/
+.agent/
 system_flow.html
-testsprite_tests/*
+testsprite_tests/
