@@ -28,7 +28,12 @@ import { connectGlobalDB } from "./config/dbManager.js";
 import { tenantResolver } from "./middlewares/tenantResolver.js";
 import { attachHistoryService } from "./middlewares/auditMiddleware.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -57,9 +62,6 @@ const io = new Server(httpServer, {
   }
 });
 app.set('io', io);
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Initialize Global DB Connection
 connectGlobalDB().then(() => {

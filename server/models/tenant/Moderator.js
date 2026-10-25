@@ -46,6 +46,10 @@ const moderatorSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    tokenVersion: {
+        type: Number,
+        default: 0
+    },
     lastUsed: {
         type: Date,
         default: null

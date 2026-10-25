@@ -157,7 +157,7 @@ const RoomManager = () => {
 
             {/* Unassigned Squads Warning */}
             {!loading && totalSquads > rooms.reduce((acc, r) => acc + (r.squads?.length || 0) + (r.players?.length || 0), 0) && (
-                <div className="mb-8 bg-cyber-card border-l-4 border-cyber-pink p-6 flex items-center justify-between gap-4 animate-fade-in shadow-xl relative overflow-hidden">
+                <div className="mb-8 bg-cyber-card border-l-4 border-cyber-pink p-6 flex items-center justify-between gap-4 animate-fade-in shadow-xl relative overflow-clip">
                     <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-cyber-pink/10 to-transparent pointer-events-none"></div>
                     <div className="flex items-center gap-4 relative z-10">
                         <div className="bg-cyber-pink/10 p-3 rounded-none border border-cyber-pink/30 text-cyber-pink">

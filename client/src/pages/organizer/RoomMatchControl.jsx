@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Trophy, RefreshCw, Play, Shield, CheckCircle, ChevronDown, Plus, Minus, Sword, AlertTriangle, Clock, Pause, Square, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, RefreshCw, Play, Shield, CheckCircle, ChevronDown, Plus, Minus, Sword, AlertTriangle, Clock, Pause, Square, RotateCcw, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import api from '../../services/api';
 import socketService from '../../services/socketService';
 import { toast } from 'react-hot-toast';
+import { confirmToast, promptToast } from '../../utils/confirmToast';
 import Button from '../../components/common/Button';
 
 const RoomMatchControl = () => {
@@ -13,7 +14,12 @@ const RoomMatchControl = () => {
     const [loading, setLoading] = useState(true);
     const [room, setRoom] = useState(null);
     const [tournament, setTournament] = useState(null);
-    const [matchNumber, setMatchNumber] = useState(1);
+
+    // Server-driven match numbers — client never increments these independently
+    const [currentMatchNumber, setCurrentMatchNumber] = useState(1); // next match to be started
+    const [viewingMatchNumber, setViewingMatchNumber] = useState(1); // what the user is currently viewing (default to 1)
+    const [availableMatches, setAvailableMatches] = useState([]); // played match numbers with data
+
     const [gameStates, setGameStates] = useState([]);
     const [moderators, setModerators] = useState([]);
     const [assignedModId, setAssignedModId] = useState('');
@@ -25,13 +31,37 @@ const RoomMatchControl = () => {
     const [timer, setTimer] = useState({ status: 'IDLE', duration: 300, remaining: 300, endsAt: null });
     const [timerInput, setTimerInput] = useState(5);
 
+    // Fetch the list of match numbers that have data (played matches) + currentMatchNumber
+    const fetchAvailableMatches = useCallback(async () => {
+        try {
+            const res = await api.get(`/api/squadGame/roomMatches/${roomId}`);
+            if (res.data.success) {
+                setAvailableMatches(res.data.playedMatchNumbers);
+                setCurrentMatchNumber(res.data.currentMatchNumber);
+                // Auto-select the latest played match if none or current invalid
+                const played = res.data.playedMatchNumbers;
+                if (played.length > 0) {
+                    setViewingMatchNumber(prev => (prev && played.includes(prev)) ? prev : played[played.length - 1]);
+                }
+            }
+        } catch (err) {
+            console.warn('Could not load available matches:', err);
+        }
+    }, [roomId]);
+
     const fetchInitialData = useCallback(async (isSilent = false) => {
         try {
             if (!isSilent) setLoading(true);
-            const modsRes = await api.get('/api/moderators/list');
-            if (modsRes.data.success) setModerators(modsRes.data.moderators.filter(m => m.isActive));
+            try {
+                const modsRes = await api.get('/api/moderators/list');
+                if (modsRes.data.success) setModerators(modsRes.data.moderators.filter(m => m.isActive));
+            } catch (modErr) {
+                console.warn('Could not load moderators list:', modErr);
+            }
 
-            const stateRes = await api.get(`/api/squadGame/roomMatchState/${roomId}?matchNumber=${matchNumber}`);
+            // Always use the viewingMatchNumber — defaults to 1 before matches are started
+            const matchToFetch = parseInt(viewingMatchNumber) || 1;
+            const stateRes = await api.get(`/api/squadGame/roomMatchState/${roomId}?matchNumber=${matchToFetch}`);
             if (stateRes.data.success) {
                 setGameStates(stateRes.data.gameStates);
                 if (stateRes.data.room) {
@@ -40,6 +70,10 @@ const RoomMatchControl = () => {
                 }
                 if (stateRes.data.tournament) {
                     setTournament(stateRes.data.tournament);
+                }
+                // Always sync the authoritative currentMatchNumber from server
+                if (stateRes.data.currentMatchNumber) {
+                    setCurrentMatchNumber(stateRes.data.currentMatchNumber);
                 }
             }
             if (!isSilent) setLoading(false);
@@ -50,7 +84,11 @@ const RoomMatchControl = () => {
                 setLoading(false);
             }
         }
-    }, [roomId, matchNumber]);
+    }, [roomId, viewingMatchNumber]);
+
+
+    // Load available matches once on mount (and whenever roomId changes)
+    useEffect(() => { fetchAvailableMatches(); }, [fetchAvailableMatches]);
 
     useEffect(() => { fetchInitialData(); }, [fetchInitialData]);
 
@@ -88,6 +126,13 @@ const RoomMatchControl = () => {
                 }));
             } else if (data.type === 'matchComplete' || data.type === 'statsUpdate' || data.type === 'disqualified') {
                 fetchInitialData(true); // Silent refresh
+            } else if (data.type === 'roomMatchStarted') {
+                // New match was started — refresh the available match list
+                fetchAvailableMatches();
+                // Switch view to the newly started match
+                if (data.matchNumber) {
+                    setViewingMatchNumber(data.matchNumber);
+                }
             }
         };
 
@@ -160,12 +205,29 @@ const RoomMatchControl = () => {
     };
 
     const handleStartMatch = async () => {
-        if (!confirm(`Start Match ${matchNumber}?`)) return;
+        // Server uses room.currentMatchNumber — we do NOT pass matchNumber from client
+        const confirmed = await confirmToast(
+            `Start Match ${currentMatchNumber}?`,
+            { type: 'info', confirmText: 'Start Match' }
+        );
+        if (!confirmed) return;
         setProcessing(true);
         try {
-            const res = await api.post('/api/squadGame/startRoomMatch', { roomId, matchNumber });
-            if (res.data.success) { toast.success(res.data.message); setGameStates(res.data.gameStates); }
-        } catch (error) { toast.error(error.response?.data?.message || 'Failed to start match'); } finally { setProcessing(false); }
+            const res = await api.post('/api/squadGame/startRoomMatch', { roomId });
+            if (res.data.success) {
+                toast.success(res.data.message);
+                const startedMatch = res.data.matchNumber;
+                // Update local state from server response
+                setCurrentMatchNumber(res.data.nextMatchNumber);
+                setAvailableMatches(prev =>
+                    prev.includes(startedMatch) ? prev : [...prev, startedMatch].sort((a, b) => a - b)
+                );
+                setViewingMatchNumber(startedMatch); // Switch view to the new match
+                setGameStates(res.data.gameStates);
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to start match');
+        } finally { setProcessing(false); }
     };
 
     const handleUpdateKills = async (gameStateId, ffId, kills) => {
@@ -222,7 +284,11 @@ const RoomMatchControl = () => {
     };
 
     const handleCompleteMatch = async (gameStateId, squadName, isLast = false) => {
-        if (!confirm(`${isLast ? 'Mark as Winner' : 'Eliminate'} "${squadName}"?`)) return;
+        const confirmed = await confirmToast(
+            `${isLast ? 'Mark as Winner' : 'Eliminate'} "${squadName}"?`,
+            { type: isLast ? 'info' : 'warning', confirmText: isLast ? 'Crown Winner' : 'Eliminate' }
+        );
+        if (!confirmed) return;
         try {
             // Explicitly send placement: 1 if marking as winner
             const payload = isLast ? { placement: 1 } : {};
@@ -232,7 +298,11 @@ const RoomMatchControl = () => {
     };
 
     const handleDisqualify = async (gameStateId, squadName) => {
-        const reason = prompt(`Reason for disqualifying "${squadName}":`, "Rule violation");
+        const reason = await promptToast(
+            `Reason for disqualifying "${squadName}":`,
+            "Rule violation",
+            { type: 'danger', confirmText: 'Disqualify', placeholder: 'Enter violation reason...' }
+        );
         if (!reason) return;
         try {
             const res = await api.put(`/api/squadGame/disqualify/${gameStateId}`, { reason });
@@ -241,7 +311,11 @@ const RoomMatchControl = () => {
     };
 
     const handleRevokeDisqualify = async (gameStateId, squadName) => {
-        if (!confirm(`Revoke disqualification for "${squadName}"?`)) return;
+        const confirmed = await confirmToast(
+            `Revoke disqualification for "${squadName}"?`,
+            { type: 'warning', confirmText: 'Revoke DQ' }
+        );
+        if (!confirmed) return;
         try {
             const res = await api.put(`/api/squadGame/revoke-disqualify/${gameStateId}`);
             if (res.data.success) { toast.success(`DQ Revoked for ${squadName}`); fetchInitialData(true); }
@@ -257,17 +331,43 @@ const RoomMatchControl = () => {
             if (a.isDisqualified && !b.isDisqualified) return 1;
             if (!a.isDisqualified && b.isDisqualified) return -1;
 
-            // 2. Stable Sort by Squad Name (Alphabetical)
-            // This prevents the list from jumping around during live scoring updates
-            return (a.squadName || '').localeCompare(b.squadName || '');
+            // 2. Sort by the tournament's chosen ranking metric
+            if (rankingSort === 'KILLS') {
+                // Primary: total kills desc, tiebreaker: points desc, then name
+                if ((b.totalKills || 0) !== (a.totalKills || 0)) {
+                    return (b.totalKills || 0) - (a.totalKills || 0);
+                }
+                if ((b.squadPoints || 0) !== (a.squadPoints || 0)) {
+                    return (b.squadPoints || 0) - (a.squadPoints || 0);
+                }
+                return (a.squadName || '').localeCompare(b.squadName || '');
+            } else {
+                // POINTS default: primary points desc, tiebreaker kills desc, then name
+                if ((b.squadPoints || 0) !== (a.squadPoints || 0)) {
+                    return (b.squadPoints || 0) - (a.squadPoints || 0);
+                }
+                if ((b.totalKills || 0) !== (a.totalKills || 0)) {
+                    return (b.totalKills || 0) - (a.totalKills || 0);
+                }
+                return (a.squadName || '').localeCompare(b.squadName || '');
+            }
         });
-    }, [gameStates]);
+    }, [gameStates, tournament]);
 
     // Derived
     const isSolo = room?.mode === 'SOLO';
+    // The latest match that has been played/started
+    const latestStartedMatch = availableMatches.length > 0 ? Math.max(...availableMatches) : 1;
+    const liveMatchNumber = latestStartedMatch;
+    // Are we looking at the currently live/latest match?
+    const isViewingLiveMatch = availableMatches.length === 0 || viewingMatchNumber === latestStartedMatch;
+    // Is the current view's match fully complete (winner crowned or all eliminated)?
+    const isMatchComplete = gameStates.length > 0 && gameStates.every(gs => gs.isCompleted || gs.isDisqualified);
+    // Has the current viewingMatchNumber been started yet (does it have gameState data)?
+    const hasMatchData = gameStates.length > 0;
 
     return (
-        <div className="min-h-screen bg-transparent text-white p-4 md:p-6 font-inter overflow-x-hidden selection:bg-cyber-red selection:text-white">
+        <div className="min-h-screen bg-transparent text-white p-4 md:p-6 font-inter overflow-x-clip selection:bg-cyber-red selection:text-white">
             {/* Background Details */}
             <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-cyber-red/5 rounded-full blur-[128px]"></div>
@@ -362,28 +462,62 @@ const RoomMatchControl = () => {
                             </div>
                         </div>
 
-                        {/* Match Selector */}
-                        <div className="relative group min-w-[120px]">
-                            <div className="flex items-center bg-cyber-charcoal border border-cyber-border hover:border-cyber-pink transition-colors h-[46px]">
-                                <div className="bg-black/40 h-full px-3 flex items-center text-cyber-muted font-bold font-oswald text-xs uppercase border-r border-cyber-border">Match</div>
-                                <select
-                                    value={matchNumber}
-                                    onChange={(e) => setMatchNumber(parseInt(e.target.value))}
-                                    className="bg-transparent text-white px-3 py-1 focus:outline-none text-lg font-bold font-oswald w-full appearance-none text-center"
-                                >
-                                    {[1, 2, 3, 4, 5, 6].map(num => <option key={num} value={num} className="bg-cyber-charcoal">{num}</option>)}
-                                </select>
+                        {/* Match History Tabs */}
+                        <div className="flex items-center gap-1 bg-cyber-charcoal/60 border border-cyber-border/50 p-1">
+                            <span className="text-[10px] font-bold font-oswald uppercase tracking-widest text-cyber-muted px-2 border-r border-cyber-border/50 pr-3">MATCH</span>
+                            <div className="flex items-center gap-1">
+                                {availableMatches.length === 0 ? (
+                                    <span className="px-3 py-1 text-sm font-bold font-oswald text-cyber-muted">--</span>
+                                ) : (
+                                    availableMatches.map(num => (
+                                        <button
+                                            key={num}
+                                            onClick={() => setViewingMatchNumber(num)}
+                                            className={`px-3 py-1 text-sm font-bold font-oswald transition-all ${
+                                                viewingMatchNumber === num
+                                                    ? num === liveMatchNumber
+                                                        ? 'bg-emerald-500 text-black'
+                                                        : 'bg-cyber-red text-white'
+                                                    : 'text-cyber-muted hover:text-white hover:bg-white/10'
+                                            }`}
+                                        >
+                                            #{num}
+                                            {num === liveMatchNumber && <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse align-middle" />}
+                                        </button>
+                                    ))
+                                )}
                             </div>
+                            {availableMatches.length > 0 && (
+                                <span className="text-[10px] font-mono text-cyber-muted ml-2 border-l border-cyber-border/50 pl-2">
+                                    Next: <span className="text-white font-bold">#{currentMatchNumber}</span>
+                                </span>
+                            )}
                         </div>
 
                         <button
-                            onClick={fetchRoomAndState}
+                            onClick={() => { fetchInitialData(); fetchAvailableMatches(); }}
                             className="h-[46px] w-[46px] flex items-center justify-center bg-cyber-charcoal border border-cyber-border hover:bg-cyber-red hover:text-white hover:border-cyber-red transition-all cursor-pointer"
                         >
                             <RefreshCw className="w-5 h-5" />
                         </button>
                     </div>
                 </header>
+
+                {/* Read-only banner when viewing a past match */}
+                {!isViewingLiveMatch && availableMatches.length > 0 && (
+                    <div className="mb-4 flex items-center gap-3 bg-cyber-charcoal/60 border border-cyber-yellow/30 text-cyber-yellow px-4 py-2">
+                        <Eye className="w-4 h-4 shrink-0" />
+                        <span className="text-xs font-bold font-oswald uppercase tracking-widest">
+                            Viewing Match #{viewingMatchNumber} — History (read-only). Switch to Match #{liveMatchNumber} for live controls.
+                        </span>
+                        <button
+                            onClick={() => setViewingMatchNumber(liveMatchNumber)}
+                            className="ml-auto text-[10px] bg-cyber-yellow/10 hover:bg-cyber-yellow/20 border border-cyber-yellow/30 text-cyber-yellow px-3 py-1 font-bold font-oswald uppercase"
+                        >
+                            Go Live
+                        </button>
+                    </div>
+                )}
 
                 {/* Stats Bar */}
                 {!loading && gameStates.length > 0 && (
@@ -413,14 +547,38 @@ const RoomMatchControl = () => {
                     <div className="flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-cyber-border/50 bg-cyber-charcoal/20">
                         <Sword className="w-20 h-20 text-cyber-muted mb-6 opacity-20" />
                         <h3 className="text-3xl font-black text-white mb-2 font-oswald uppercase tracking-wide">Match Pending</h3>
-                        <p className="text-cyber-muted mb-8 text-center max-w-md">The battlefield is empty. Initialize the scoring system to begin tracking squad performance.</p>
+                        <p className="text-cyber-muted mb-8 text-center max-w-md">
+                            The battlefield is empty. Click below to start Match #{currentMatchNumber}.
+                        </p>
                         <button onClick={handleStartMatch} disabled={processing} className="btn-cyber-primary flex items-center gap-3 px-8 py-4 text-lg clip-path-slant">
                             {processing ? <RefreshCw className="animate-spin w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
-                            INITIALIZE SYSTEM
+                            START MATCH #{currentMatchNumber}
                         </button>
                     </div>
                 ) : (
                     <div className={`grid gap-4 ${room?.mode === 'CLASH_SQUAD' ? 'md:grid-cols-2' : ''}`}>
+
+                        {/* "Start Next Match" banner — shown only when live match is fully complete */}
+                        {isViewingLiveMatch && isMatchComplete && (
+                            <div className="col-span-full mb-2 flex items-center justify-between gap-4 bg-gradient-to-r from-emerald-900/40 to-transparent border border-emerald-500/40 px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                    <Trophy className="w-6 h-6 text-emerald-400 shrink-0" />
+                                    <div>
+                                        <div className="text-sm font-bold text-emerald-400 font-oswald uppercase tracking-wider">Match #{liveMatchNumber} Complete</div>
+                                        <div className="text-xs text-cyber-muted">All squads eliminated or crowned. Ready to start the next round.</div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleStartMatch}
+                                    disabled={processing}
+                                    className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-bold font-oswald uppercase text-sm tracking-widest transition-all disabled:opacity-50 shrink-0"
+                                >
+                                    {processing ? <RefreshCw className="animate-spin w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+                                    Start Match #{currentMatchNumber}
+                                </button>
+                            </div>
+                        )}
+
                         {/* Header Row */}
                         <div className={`${room?.mode === 'CLASH_SQUAD' ? 'hidden' : 'hidden md:grid'} grid-cols-12 gap-4 px-6 py-2 text-[10px] font-bold text-cyber-muted uppercase tracking-widest font-oswald border-b border-cyber-border/30 col-span-full`}>
                             <div className="col-span-1">Status</div>
@@ -433,12 +591,16 @@ const RoomMatchControl = () => {
 
                         {sortedGameStates.map((gs, index) => {
                             const isActive = !gs.isCompleted && !gs.isDisqualified;
-                            const isWinner = gs.isCompleted && gs.squadPlacement === 1;
-                            const currentRank = gs.squadPlacement || index + 1;
+                            // Booyah = survived last in-match (squadPlacement === 1)
+                            const isBooyah = gs.isCompleted && gs.squadPlacement === 1;
+                            // Leaderboard rank = sorted position (by kills/points)
+                            const leaderboardRank = index + 1;
+                            // Survival placement from server (elimination order)
+                            const survivalRank = gs.squadPlacement || '-';
 
                             return (
                                 <div key={gs._id} className={`group relative bg-cyber-card border border-cyber-border hover:border-cyber-muted transition-all duration-200 ${expandedSquad === gs._id ? 'border-cyber-red/50 bg-cyber-charcoal' : ''}`}>
-                                    <div className={`absolute top-0 bottom-0 left-0 w-1 ${gs.isDisqualified ? 'bg-red-600' : isWinner ? 'bg-yellow-500' : gs.isCompleted ? 'bg-gray-500' : 'bg-success-500'}`}></div>
+                                    <div className={`absolute top-0 bottom-0 left-0 w-1 ${gs.isDisqualified ? 'bg-red-600' : isBooyah ? 'bg-yellow-500' : gs.isCompleted ? 'bg-gray-500' : 'bg-success-500'}`}></div>
                                     <div className={`p-4 md:py-4 md:px-6 grid gap-4 items-center ${room?.mode === 'CLASH_SQUAD' ? 'grid-cols-1 md:grid-cols-10' : 'grid-cols-1 md:grid-cols-12'}`}>
                                         <div className="col-span-1 flex items-center">
                                             {gs.isDisqualified ? <AlertTriangle className="text-red-600 w-5 h-5" /> : gs.isCompleted ? <CheckCircle className="text-cyber-muted w-5 h-5" /> : <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]"></div>}
@@ -448,14 +610,21 @@ const RoomMatchControl = () => {
                                                 {gs.squadName} {room?.mode === 'CLASH_SQUAD' && <span className="text-cyber-muted text-sm tracking-normal">({tournament?.teamSize || 4}v{tournament?.teamSize || 4})</span>}
                                                 {gs.isDisqualified && <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 font-sans font-bold tracking-widest rounded-sm">DQ</span>}
                                                 {gs.isCompleted && !gs.isDisqualified && (
-                                                    <span className={`text-[9px] px-1.5 py-0.5 font-sans font-bold tracking-widest rounded-sm flex items-center gap-1 ${isWinner ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'}`}>
-                                                        {isWinner ? 'WINNER' : `ELIMINATED #${gs.squadPlacement || '-'}`}
-                                                    </span>
+                                                    <>
+                                                        {/* Survival placement badge (Booyah or elimination order) */}
+                                                        <span className={`text-[9px] px-1.5 py-0.5 font-sans font-bold tracking-widest rounded-sm flex items-center gap-1 ${isBooyah ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'}`}>
+                                                            {isBooyah ? '🏆 BOOYAH' : `ELIM #${survivalRank}`}
+                                                        </span>
+                                                        {/* Leaderboard rank badge */}
+                                                        <span className={`text-[9px] px-1.5 py-0.5 font-sans font-bold tracking-widest rounded-sm ${leaderboardRank === 1 ? 'bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/40' : 'bg-cyber-charcoal text-cyber-muted border border-cyber-border'}`}>
+                                                            RANK #{leaderboardRank}
+                                                        </span>
+                                                    </>
                                                 )}
                                             </h3>
                                         </div>
                                         <div className="col-span-1 text-center hidden md:block">
-                                            <div className="text-2xl font-black text-white font-oswald">{currentRank}</div>
+                                            <div className="text-2xl font-black text-white font-oswald">{leaderboardRank}</div>
                                         </div>
                                         <div className="col-span-1 text-center hidden md:block">
                                             <div className="text-xl font-bold text-cyber-blue font-mono">{gs.squadPoints || 0}</div>
@@ -464,7 +633,7 @@ const RoomMatchControl = () => {
                                             <div className="text-xl font-bold text-cyber-red font-mono">{gs.players.reduce((a, b) => a + (b.kills || 0), 0)}</div>
                                         </div>
                                         <div className={`${room?.mode === 'CLASH_SQUAD' ? 'col-span-2' : 'col-span-3'} flex justify-end items-center gap-3`}>
-                                            {isActive && (
+                                            {isActive && isViewingLiveMatch && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -472,6 +641,7 @@ const RoomMatchControl = () => {
                                                         handleCompleteMatch(gs._id, gs.squadName, activeCount === 1);
                                                     }}
                                                     className={`h-8 px-4 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest font-oswald transition-all border ${gameStates.filter(x => !x.isCompleted && !x.isDisqualified).length === 1 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500 hover:bg-emerald-500 hover:text-white' : 'bg-cyber-black text-cyber-muted border-cyber-border hover:border-cyber-red hover:text-cyber-red'}`}
+                                                    title={gameStates.filter(x => !x.isCompleted && !x.isDisqualified).length === 1 ? 'Last squad standing — Crown as Booyah (#1 survival)' : 'Eliminate from match (assign survival placement)'}
                                                 >
                                                     {gameStates.filter(x => !x.isCompleted && !x.isDisqualified).length === 1 ? 'Crown Winner' : 'Eliminate'}
                                                 </button>
@@ -489,7 +659,7 @@ const RoomMatchControl = () => {
                                         <div className={`border-t border-cyber-border bg-black/40 animate-fade-in ${isSolo ? 'p-2' : 'p-6'}`}>
                                             <div className={`grid gap-4 ${isSolo || room?.mode === 'CLASH_SQUAD' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
                                                 {gs.players.map((player) => (
-                                                    <div key={player.ffId} className="bg-cyber-charcoal border border-cyber-border hover:border-cyber-muted/50 p-3 flex flex-col gap-3 relative overflow-hidden group/player">
+                                                    <div key={player.ffId} className="bg-cyber-charcoal border border-cyber-border hover:border-cyber-muted/50 p-3 flex flex-col gap-3 relative overflow-clip group/player">
                                                         <div className="flex justify-between items-start">
                                                             <div>
                                                                 <div className={`font-bold text-sm uppercase font-oswald tracking-wide truncate ${player.isEliminated ? 'text-cyber-muted line-through' : 'text-white'}`}>{player.playerName}</div>

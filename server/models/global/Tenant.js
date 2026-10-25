@@ -43,6 +43,10 @@ const tenantSchema = new mongoose.Schema({
         min: 1,
         max: 50
     },
+    tokenVersion: {
+        type: Number,
+        default: 0
+    },
     createdAt: {
         type: Date,
         default: Date.now

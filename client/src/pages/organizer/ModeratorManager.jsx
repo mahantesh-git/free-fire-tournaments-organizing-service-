@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Copy, Trash2, RefreshCw, Users, Shield, CheckCircle, AlertTriangle, Key } from 'lucide-react';
+import { ArrowLeft, Plus, Copy, Trash2, RefreshCw, Users, Shield, CheckCircle, AlertTriangle, Key, Pencil, Check, X } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { confirmToast } from '../../utils/confirmToast';
 import ModeratorAssignmentModal from '../../components/admin/ModeratorAssignmentModal';
-import Navbar from '../../components/layout/Navbar';
 
 const ModeratorManager = () => {
     const navigate = useNavigate();
@@ -17,6 +17,9 @@ const ModeratorManager = () => {
     const [newModeratorEmail, setNewModeratorEmail] = useState('');
     const [newModeratorPhone, setNewModeratorPhone] = useState('');
     const [creating, setCreating] = useState(false);
+    const [editingLimit, setEditingLimit] = useState(false);
+    const [limitInput, setLimitInput] = useState('');
+    const [savingLimit, setSavingLimit] = useState(false);
 
     // Assignment Modal State
     const [assignmentModal, setAssignmentModal] = useState({
@@ -100,7 +103,11 @@ const ModeratorManager = () => {
     };
 
     const handleDeleteModerator = async (id, name) => {
-        if (!confirm(`Revoke access for "${name}"? This will free up a moderator slot.`)) return;
+        const confirmed = await confirmToast(
+            `Revoke access for "${name}"? This will free up a moderator slot.`,
+            { type: 'danger', confirmText: 'Revoke Access' }
+        );
+        if (!confirmed) return;
 
         try {
             await api.delete(`/api/moderators/${id}`);
@@ -112,7 +119,11 @@ const ModeratorManager = () => {
     };
 
     const handleRegenerateCode = async (id, name) => {
-        if (!confirm(`Regenerate access code for "${name}"? The old code will stop working.`)) return;
+        const confirmed = await confirmToast(
+            `Regenerate access code for "${name}"? The old code will stop working.`,
+            { type: 'warning', confirmText: 'Regenerate' }
+        );
+        if (!confirmed) return;
 
         try {
             const res = await api.put(`/api/moderators/${id}/regenerate`);
@@ -127,8 +138,28 @@ const ModeratorManager = () => {
         }
     };
 
+    const handleUpdateLimit = async () => {
+        const val = parseInt(limitInput, 10);
+        if (isNaN(val) || val < 1 || val > 50) {
+            return toast.error('Limit must be between 1 and 50', { id: 'limit-invalid' });
+        }
+        setSavingLimit(true);
+        try {
+            const res = await api.put('/api/moderators/limit', { maxModerators: val });
+            if (res.data.success) {
+                setLimit(res.data.limit);
+                setEditingLimit(false);
+                toast.success(res.data.message, { id: 'limit-updated' });
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update limit', { id: 'limit-error' });
+        } finally {
+            setSavingLimit(false);
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-cyber-black text-white font-inter selection:bg-cyber-red selection:text-white overflow-hidden relative">
+        <div className="min-h-screen bg-cyber-black text-white font-inter selection:bg-cyber-red selection:text-white overflow-clip relative">
             {/* Background Details */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyber-red/5 rounded-full blur-[128px]"></div>
@@ -179,23 +210,67 @@ const ModeratorManager = () => {
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-cyber-red to-cyber-purple opacity-30 group-hover:opacity-50 blur transition duration-500"></div>
                     <div className="relative bg-cyber-card border border-cyber-border p-6 md:p-8 bg-cyber-black/90">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            {/* Active count + editable max */}
                             <div>
                                 <h3 className="text-sm font-bold text-cyber-muted uppercase tracking-widest font-oswald mb-1">Active Moderators</h3>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-5xl font-black text-white font-oswald italic">{limit.current}</span>
-                                    <span className="text-2xl text-cyber-muted font-oswald">/ {limit.max}</span>
+                                    <span className="text-2xl text-cyber-muted font-oswald">/</span>
+                                    {editingLimit ? (
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                max={50}
+                                                value={limitInput}
+                                                onChange={e => setLimitInput(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter') handleUpdateLimit(); if (e.key === 'Escape') setEditingLimit(false); }}
+                                                className="w-20 bg-cyber-charcoal border border-cyber-red text-white text-2xl font-black font-oswald px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-cyber-red"
+                                                autoFocus
+                                            />
+                                            <button
+                                                onClick={handleUpdateLimit}
+                                                disabled={savingLimit}
+                                                className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500 border border-emerald-500/50 text-emerald-400 hover:text-white transition-all"
+                                                title="Save limit"
+                                            >
+                                                <Check className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingLimit(false)}
+                                                className="p-1.5 bg-red-500/10 hover:bg-red-500/30 border border-red-500/30 text-red-400 hover:text-white transition-all"
+                                                title="Cancel"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-2xl text-white font-oswald font-bold">{limit.max}</span>
+                                            <button
+                                                onClick={() => { setLimitInput(String(limit.max)); setEditingLimit(true); }}
+                                                className="p-1 text-cyber-muted hover:text-cyber-neon transition-colors"
+                                                title="Edit moderator limit"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
+                                <p className="text-[10px] text-cyber-muted/50 font-mono mt-1 uppercase tracking-widest">
+                                    Click ✏ to change max seats (1–50)
+                                </p>
                             </div>
 
                             <div className="flex-1 md:mx-12">
                                 <div className="flex justify-between text-xs font-mono text-cyber-muted mb-2 uppercase">
                                     <span>Capacity</span>
-                                    <span>{Math.round((limit.current / limit.max) * 100)}% Used</span>
+                                    <span>{limit.max > 0 ? Math.round((limit.current / limit.max) * 100) : 0}% Used</span>
                                 </div>
-                                <div className="h-2 bg-cyber-charcoal w-full overflow-hidden relative">
+                                <div className="h-2 bg-cyber-charcoal w-full overflow-clip relative">
                                     <div
                                         className="h-full bg-gradient-to-r from-cyber-red to-cyber-purple transition-all duration-500 relative"
-                                        style={{ width: `${(limit.current / limit.max) * 100}%` }}
+                                        style={{ width: `${limit.max > 0 ? (limit.current / limit.max) * 100 : 0}%` }}
                                     >
                                         <div className="absolute top-0 right-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white]"></div>
                                     </div>
@@ -317,7 +392,7 @@ const ModeratorManager = () => {
                 ) : (
                     <div className="grid gap-4">
                         {moderators.map((mod) => (
-                            <div key={mod._id} className={`group bg-cyber-card border transition-all duration-300 relative overflow-hidden ${mod.isActive ? 'border-cyber-border hover:border-cyber-purple' : 'border-red-900/30 bg-red-900/5'}`}>
+                            <div key={mod._id} className={`group bg-cyber-card border transition-all duration-300 relative overflow-clip ${mod.isActive ? 'border-cyber-border hover:border-cyber-purple' : 'border-red-900/30 bg-red-900/5'}`}>
                                 {/* Status Strip */}
                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${mod.isActive ? 'bg-cyber-neon' : 'bg-red-600'}`}></div>
 

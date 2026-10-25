@@ -13,3 +13,8 @@ yarn-error.log*
 .vs/
 .env.local
 .env.*
+tests/*
+docs/*
+.agent/*
+system_flow.html
+testsprite_tests/*

@@ -73,11 +73,25 @@ const SquadScoreboard = ({ isAudience = false }) => {
         const rankingSort = tournament?.settings?.rankingSort || 'POINTS';
 
         filtered = [...filtered].sort((a, b) => {
+            // DQ always at bottom
             if (a.isDisqualified && !b.isDisqualified) return 1;
             if (!a.isDisqualified && b.isDisqualified) return -1;
-            if (rankingSort === 'KILLS') return (b.totalKills || 0) - (a.totalKills || 0);
-            if ((b.squadPoints || 0) !== (a.squadPoints || 0)) return (b.squadPoints || 0) - (a.squadPoints || 0);
-            return (b.totalKills || 0) - (a.totalKills || 0);
+
+            if (rankingSort === 'KILLS') {
+                // Primary: kills desc — tiebreaker: points desc — final: name asc
+                if ((b.totalKills || 0) !== (a.totalKills || 0))
+                    return (b.totalKills || 0) - (a.totalKills || 0);
+                if ((b.squadPoints || 0) !== (a.squadPoints || 0))
+                    return (b.squadPoints || 0) - (a.squadPoints || 0);
+                return (a.squadName || '').localeCompare(b.squadName || '');
+            } else {
+                // POINTS default — tiebreaker: kills desc — final: name asc
+                if ((b.squadPoints || 0) !== (a.squadPoints || 0))
+                    return (b.squadPoints || 0) - (a.squadPoints || 0);
+                if ((b.totalKills || 0) !== (a.totalKills || 0))
+                    return (b.totalKills || 0) - (a.totalKills || 0);
+                return (a.squadName || '').localeCompare(b.squadName || '');
+            }
         });
         setSortedSquads(filtered);
     }, [squads, currentRoom, tournament]);
@@ -200,7 +214,7 @@ const SquadScoreboard = ({ isAudience = false }) => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {/* 1st Place — center on desktop */}
                             {top1 && (
-                                <div className="md:col-start-2 md:row-start-1 bg-[#151515] border border-amber-400/40 rounded-xl p-5 relative overflow-hidden">
+                                <div className="md:col-start-2 md:row-start-1 bg-[#151515] border border-amber-400/40 rounded-xl p-5 relative overflow-clip">
                                     <div className="absolute inset-0 bg-gradient-to-br from-amber-400/5 to-transparent pointer-events-none rounded-xl" />
                                     <div className="flex items-start justify-between mb-3">
                                         <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 px-2 py-0.5 rounded-full">

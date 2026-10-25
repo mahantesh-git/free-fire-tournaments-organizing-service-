@@ -164,7 +164,7 @@ const AdminPanel = () => {
     };
 
     return (
-        <div className="min-h-screen bg-transparent text-white font-inter selection:bg-cyber-red selection:text-white relative overflow-hidden">
+        <div className="min-h-screen bg-transparent text-white font-inter selection:bg-cyber-red selection:text-white relative overflow-clip">
             {/* Background Effects */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(255,59,59,0.1),transparent_70%)]"></div>
@@ -211,7 +211,7 @@ const AdminPanel = () => {
                     {/* Main Control Bar */}
                     <div className="mb-6 sticky top-4 z-40">
                         <div className="absolute inset-0 bg-cyber-black/80 backdrop-blur-md border-b border-white/5 shadow-2xl skew-x-[-10deg] transform origin-top-left scale-x-110 -z-10"></div>
-                        <Card className="p-4 bg-cyber-black/80 backdrop-blur border-cyber-red/20 shadow-2xl relative overflow-hidden">
+                        <Card className="p-4 bg-cyber-black/80 backdrop-blur border-cyber-red/20 shadow-2xl relative overflow-clip">
                             <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-cyber-red/10 to-transparent pointer-events-none"></div>
 
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4 relative z-10">

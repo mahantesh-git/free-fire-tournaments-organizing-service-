@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('auth_token');
         if (token) {
             setIsAuthenticated(true);
-            // You can decode the token here to get user info if needed
         }
         setLoading(false);
     }, []);
@@ -28,8 +27,23 @@ export const AuthProvider = ({ children }) => {
         initCSRFProtection();
     };
 
-    const logout = () => {
+    const logout = async () => {
+        const orgToken = localStorage.getItem('org_token');
+        if (orgToken) {
+            try {
+                const api = (await import('../services/api')).default;
+                await api.post('/api/organizers/logout');
+            } catch (e) {
+                console.error('Logout error:', e);
+            }
+        }
+        // Clear ALL auth tokens for both organizer and moderator
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('org_token');
+        localStorage.removeItem('mod_token');
+        localStorage.removeItem('token');
+        localStorage.removeItem('tenantSlug');
+        localStorage.removeItem('moderator');
         removeCSRFToken();
         setIsAuthenticated(false);
         setUser(null);

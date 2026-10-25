@@ -30,28 +30,47 @@ const checkKillUpdateAuth = async (req, res, next) => {
             });
         }
 
+        const resolvedTenantSlug = req.tenant?.slug;
+        const resolvedTenantId = req.tenant?._id?.toString();
+
         console.log('--- AUTH MIDDLEWARE ---', {
             path: req.path,
             decodedId: decoded.id,
             decodedRole: decoded.role,
             resolvedTenantId: req.tenant?._id,
-            resolvedTenantSlug: req.tenant?.slug
+            resolvedTenantSlug: resolvedTenantSlug
         });
 
         // Case 1: Moderator
-        // ... (remaining cases)
         if (decoded.role === 'moderator') {
             req.isModerator = true;
             req.moderatorId = decoded.id;
 
             // FETCH FRESH DATA FROM DB TO PREVENT STALE PERMISSIONS
-            const moderatorSchema = (await import('../models/tenant/Moderator.js')).moderatorSchema;
-            const Moderator = req.tenantConnection.model('Moderator', moderatorSchema);
+            const { moderatorSchema } = await import('../models/tenant/Moderator.js');
+            const { getTenantModel } = await import('../utils/tenantModel.js');
+            const Moderator = getTenantModel(req.tenantConnection, 'Moderator', moderatorSchema);
             const moderator = await Moderator.findById(decoded.id).lean();
 
             if (!moderator || !moderator.isActive) {
                 console.warn('Moderator auth failed: Inactive or not found', { id: decoded.id });
-                return res.status(403).json({ success: false, message: 'Moderator account inactive' });
+                return res.status(403).json({ success: false, message: 'Moderator account inactive or revoked. Please login again.' });
+            }
+
+            // Validate tokenVersion — if organizer regenerated access code or revoked,
+            // the DB tokenVersion is bumped and the old JWT becomes invalid instantly.
+            const dbTokenVersion = moderator.tokenVersion || 0;
+            const jwtTokenVersion = decoded.tokenVersion ?? -1; // old tokens without version fail
+            if (jwtTokenVersion !== dbTokenVersion) {
+                console.warn('Moderator auth failed: Token version mismatch (revoked/regenerated)', {
+                    id: decoded.id,
+                    jwtVersion: jwtTokenVersion,
+                    dbVersion: dbTokenVersion
+                });
+                return res.status(401).json({
+                    success: false,
+                    message: 'Your session has been invalidated. The organizer has revoked or regenerated your access. Please login again.'
+                });
             }
 
             req.assignedSquads = moderator.assignedSquads || [];
@@ -62,9 +81,31 @@ const checkKillUpdateAuth = async (req, res, next) => {
         // Case 2: Organizer
         if (decoded.role === 'organizer' || (decoded.id && !decoded.role)) {
             const tokenTenantId = decoded.id.toString();
-            const resolvedTenantId = req.tenant?._id?.toString();
 
             if (req.tenant && tokenTenantId === resolvedTenantId) {
+                // Check if account is active
+                if (req.tenant.status && req.tenant.status !== 'active') {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Organization account is inactive or suspended'
+                    });
+                }
+
+                // Check tokenVersion (invalidated on logout)
+                const dbTokenVersion = req.tenant.tokenVersion || 0;
+                const jwtTokenVersion = decoded.tokenVersion ?? 0;
+                if (jwtTokenVersion !== dbTokenVersion) {
+                    console.warn('Organizer auth failed: Token version mismatch (logged out)', {
+                        id: decoded.id,
+                        jwtVersion: jwtTokenVersion,
+                        dbVersion: dbTokenVersion
+                    });
+                    return res.status(401).json({
+                        success: false,
+                        message: 'Your session has ended or you have logged out. Please log in again.'
+                    });
+                }
+
                 req.isOrganizer = true;
                 return next();
             } else {
@@ -75,7 +116,7 @@ const checkKillUpdateAuth = async (req, res, next) => {
                 });
                 return res.status(403).json({
                     success: false,
-                    message: `Organization mismatch. Your session is for a different organization. Please logout and login again for the current organization (${resolvedTenantSlug}).`
+                    message: `Organization mismatch. Your session is for a different organization. Please logout and login again for the current organization (${resolvedTenantSlug || 'unknown'}).`
                 });
             }
         }
@@ -127,7 +168,8 @@ const validateSquadAccess = (getSquadIdFromReq) => {
                 // 2. Check room assignment (if moderator is assigned to a room, they access all squads in it)
                 if (req.assignedRooms && req.assignedRooms.length > 0) {
                     const roomSchema = (await import('../models/tenant/Room.js')).default;
-                    const Room = req.tenantConnection.model('Room', roomSchema);
+                    const { getTenantModel } = await import('../utils/tenantModel.js');
+                    const Room = getTenantModel(req.tenantConnection, 'Room', roomSchema);
 
                     const room = await Room.findOne({
                         squads: squadId,

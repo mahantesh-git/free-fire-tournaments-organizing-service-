@@ -249,7 +249,7 @@ const TournamentDetails = () => {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-6">
-                                    <div className="bg-cyber-black p-6 border border-cyber-border relative overflow-hidden group hover:border-cyber-purple/50 transition-colors">
+                                    <div className="bg-cyber-black p-6 border border-cyber-border relative overflow-clip group hover:border-cyber-purple/50 transition-colors">
                                         <div className="absolute right-0 top-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
                                             <Users className="w-12 h-12 text-white" />
                                         </div>
@@ -259,7 +259,7 @@ const TournamentDetails = () => {
                                         <div className="text-4xl font-oswald font-black text-white">{playerCount}</div>
                                         <div className="text-cyber-muted/50 text-xs mt-2 font-mono">DB_RECORDS</div>
                                     </div>
-                                    <div className="bg-cyber-black p-6 border border-cyber-border relative overflow-hidden group hover:border-cyber-purple/50 transition-colors">
+                                    <div className="bg-cyber-black p-6 border border-cyber-border relative overflow-clip group hover:border-cyber-purple/50 transition-colors">
                                         <div className="absolute right-0 top-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
                                             <Users className="w-12 h-12 text-white" />
                                         </div>
@@ -282,7 +282,7 @@ const TournamentDetails = () => {
                         </div>
 
                         {/* Sidebar - Quick Actions / Info */}
-                        <div className="space-y-6">
+                        <div className="space-y-6 lg:sticky lg:top-28 h-fit">
                             <div className="glass-cyber p-6 border border-cyber-border text-sm">
                                 <h3 className="text-sm font-oswald font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2 border-b border-cyber-border pb-2">
                                     <Settings className="w-4 h-4 text-cyber-red" />
@@ -308,7 +308,7 @@ const TournamentDetails = () => {
                 )}
 
                 {activeTab === 'history' && (
-                    <MatchHistory tournamentId={tournamentId} />
+                    <MatchHistory tournamentId={tournamentId} tournament={tournament} />
                 )}
 
                 {activeTab === 'timeline' && (

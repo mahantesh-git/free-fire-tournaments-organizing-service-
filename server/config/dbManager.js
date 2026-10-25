@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config();
 
 let connectionCache = {};
@@ -15,9 +21,9 @@ export const connectGlobalDB = async () => {
         await mongoose.connect(process.env.MONGO_URI, {
             dbName: 'esports_platform_global' // Explicitly set global DB name
         });
-        console.log('✅ Global Database Connected');
+        console.log(' Global Database Connected');
     } catch (error) {
-        console.error('❌ Global Database Connection Error:', error);
+        console.error(' Global Database Connection Error:', error);
         process.exit(1);
     }
 };
@@ -45,15 +51,15 @@ export const getTenantConnection = async (tenantId, dbName) => {
         });
 
         // Handle connection events
-        conn.on('connected', () => console.log(`🔌 Tenant DB Connected: ${dbName}`));
-        conn.on('error', (err) => console.error(`❌ Tenant DB Error (${dbName}):`, err));
+        conn.on('connected', () => console.log(` Tenant DB Connected: ${dbName}`));
+        conn.on('error', (err) => console.error(` Tenant DB Error (${dbName}):`, err));
 
         // Cache the connection
         connectionCache[tenantId] = conn;
 
         return conn;
     } catch (error) {
-        console.error(`❌ Failed to connect to tenant DB: ${dbName}`, error);
+        console.error(`Failed to connect to tenant DB: ${dbName}`, error);
         throw error;
     }
 };

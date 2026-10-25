@@ -4,9 +4,13 @@ import { getTenantConnection } from '../config/dbManager.js';
 import mongoose from 'mongoose';
 
 // Generate Token
-const generateToken = (id) => {
-    return jwt.sign({ id, role: 'organizer' }, process.env.JWT_SECRET, {
-        expiresIn: '30d'
+const generateToken = (tenant) => {
+    return jwt.sign({
+        id: tenant._id,
+        role: 'organizer',
+        tokenVersion: tenant.tokenVersion || 0
+    }, process.env.JWT_SECRET, {
+        expiresIn: '2d'
     });
 };
 
@@ -75,7 +79,7 @@ export const registerOrganizer = async (req, res) => {
                 name: tenant.name,
                 slug: tenant.slug,
                 email: tenant.ownerEmail,
-                token: generateToken(tenant._id)
+                token: generateToken(tenant)
             }
         });
 
@@ -100,7 +104,7 @@ export const loginOrganizer = async (req, res) => {
                     name: tenant.name,
                     slug: tenant.slug, // Subdomain
                     email: tenant.ownerEmail,
-                    token: generateToken(tenant._id)
+                    token: generateToken(tenant)
                 }
             });
         } else {
@@ -111,17 +115,40 @@ export const loginOrganizer = async (req, res) => {
     }
 };
 
+// Logout Organizer - Invalidate backend tokens by incrementing tokenVersion
+export const logoutOrganizer = async (req, res) => {
+    try {
+        let tenantId = req.tenant?._id || req.body?.tenantId;
+
+        // If not found from tenant, decode from Authorization header
+        if (!tenantId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            try {
+                const token = req.headers.authorization.split(' ')[1];
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                tenantId = decoded.id;
+            } catch (jwtErr) {
+                // Ignore token error during logout
+            }
+        }
+
+        if (tenantId) {
+            await Tenant.findByIdAndUpdate(tenantId, { $inc: { tokenVersion: 1 } });
+            console.log(`🔒 [Organizer Logout] Token invalidated for tenant ${tenantId}`);
+        }
+
+        res.json({
+            success: true,
+            message: 'Organizer logged out successfully. Server token invalidated.'
+        });
+    } catch (error) {
+        console.error('Organizer logout error:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
 // Get Organizer Profile
 export const getOrganizerProfile = async (req, res) => {
     try {
-        // req.tenant is set by tenantResolver, BUT that's for Tenant Data access.
-        // Startups might use a different "auth" middleware for Global actions.
-        // For simplicity, let's assume we use the same mechanism or JWT.
-        // If this is called via "api.platform.com/organizer/me" -> Global
-        // If "org1.platform.com/organizer/me" -> Tenant context
-
-        // This is a global action really.
-        // TODO: distinct middleware for Global Auth vs Tenant Auth if needed.
         res.json({ message: 'Profile endpoint pending auth implementation' });
     } catch (error) {
         res.status(500).json({ error: error.message });

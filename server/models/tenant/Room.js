@@ -48,6 +48,17 @@ const roomSchema = new mongoose.Schema({
         enum: ['PENDING', 'READY', 'ONGOING', 'COMPLETED'],
         default: 'PENDING'
     },
+    // Multi-match tracking: server is the single source of truth for the active match number
+    currentMatchNumber: {
+        type: Number,
+        default: 1,
+        min: 1
+    },
+    matchesPlayed: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
     createdAt: {
         type: Date,
         default: Date.now

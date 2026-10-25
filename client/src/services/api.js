@@ -63,6 +63,75 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// Response Interceptor — auto-logout moderators whose tokens have been invalidated
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            const isModeratorPath = window.location.pathname.includes('/moderator/');
+            const modToken = localStorage.getItem('mod_token');
+
+            if (isModeratorPath && modToken) {
+                const message = error.response?.data?.message || '';
+                const isSessionInvalidated = message.includes('invalidated') ||
+                    message.includes('revoked') ||
+                    message.includes('inactive') ||
+                    message.includes('expired');
+
+                if (isSessionInvalidated) {
+                    // Clear moderator session
+                    localStorage.removeItem('mod_token');
+                    localStorage.removeItem('moderator');
+
+                    // Show error and redirect — use dynamic import to avoid circular deps
+                    import('react-hot-toast').then(({ toast }) => {
+                        toast.error('Session revoked by organizer. Please login again.', {
+                            id: 'mod-session-revoked',
+                            duration: 5000
+                        });
+                    });
+
+                    // Redirect to moderator login
+                    const tenantSlug = localStorage.getItem('tenantSlug') || '';
+                    window.location.href = `/moderator/login`;
+                }
+            }
+
+            // Handle Organizer session expired / logged out
+            const isOrganizerPath = window.location.pathname.includes('/organizer/');
+            const orgToken = localStorage.getItem('org_token') || localStorage.getItem('token');
+
+            if (isOrganizerPath && orgToken) {
+                const message = error.response?.data?.message || error.response?.data?.error || '';
+                const isSessionInvalidated = message.includes('invalidated') ||
+                    message.includes('logged out') ||
+                    message.includes('inactive') ||
+                    message.includes('expired') ||
+                    message.includes('Organization mismatch') ||
+                    error.response.status === 401;
+
+                if (isSessionInvalidated) {
+                    // Clear all organizer tokens from storage
+                    localStorage.removeItem('org_token');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('tenantSlug');
+
+                    import('react-hot-toast').then(({ toast }) => {
+                        toast.error('Session ended or expired. Please login again.', {
+                            id: 'org-session-expired',
+                            duration: 5000
+                        });
+                    });
+
+                    window.location.href = '/organizer/login';
+                }
+            }
+        }
+        return Promise.reject(error);
+    }
+);
+
 // Common Error Handler
 export const handleAPIError = (error) => {
     if (error.response) {

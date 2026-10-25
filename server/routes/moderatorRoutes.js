@@ -133,13 +133,15 @@ router.get('/list', checkKillUpdateAuth, async (req, res) => {
 
         const activeModeratorsCount = moderators.filter(m => m.isActive).length;
 
+        const maxMods = tenant?.maxModerators || 5;
+
         res.json({
             success: true,
             moderators,
             limit: {
                 current: activeModeratorsCount,
-                max: tenant.maxModerators,
-                available: tenant.maxModerators - activeModeratorsCount
+                max: maxMods,
+                available: maxMods - activeModeratorsCount
             }
         });
 
@@ -149,6 +151,59 @@ router.get('/list', checkKillUpdateAuth, async (req, res) => {
             success: false,
             message: 'Error listing moderators'
         });
+    }
+});
+
+/**
+ * PUT /api/moderators/limit
+ * Update the organizer's moderator seat limit (maxModerators on Tenant)
+ */
+router.put('/limit', checkKillUpdateAuth, async (req, res) => {
+    try {
+        if (!req.isOrganizer) {
+            return res.status(403).json({ success: false, message: 'Organizer access required' });
+        }
+
+        const newLimit = parseInt(req.body.maxModerators, 10);
+
+        if (isNaN(newLimit) || newLimit < 1 || newLimit > 50) {
+            return res.status(400).json({
+                success: false,
+                message: 'Limit must be a number between 1 and 50'
+            });
+        }
+
+        // Don't allow setting the limit below the current active count
+        const { Moderator } = getModels(req);
+        const activeCount = await Moderator.countDocuments({ isActive: true });
+
+        if (newLimit < activeCount) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot set limit to ${newLimit} — you currently have ${activeCount} active moderators. Revoke some first.`
+            });
+        }
+
+        // Persist on the tenant (global model — use req.tenant._id)
+        const Tenant = (await import('../models/global/Tenant.js')).default;
+        await Tenant.findByIdAndUpdate(req.tenant._id, { maxModerators: newLimit });
+
+        // Also update the in-memory tenant so the same request cycle reflects it
+        req.tenant.maxModerators = newLimit;
+
+        res.json({
+            success: true,
+            message: `Moderator limit updated to ${newLimit}`,
+            limit: {
+                current: activeCount,
+                max: newLimit,
+                available: newLimit - activeCount
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating moderator limit:', error);
+        res.status(500).json({ success: false, message: 'Error updating moderator limit' });
     }
 });
 
@@ -214,6 +269,7 @@ router.delete('/:id', checkKillUpdateAuth, async (req, res) => {
         }
 
         moderator.isActive = false;
+        moderator.tokenVersion = (moderator.tokenVersion || 0) + 1; // Invalidate all existing JWTs
         await moderator.save();
 
         res.json({
@@ -261,6 +317,7 @@ router.put('/:id/regenerate', checkKillUpdateAuth, async (req, res) => {
         }
 
         moderator.accessCode = accessCode;
+        moderator.tokenVersion = (moderator.tokenVersion || 0) + 1; // Invalidate all existing JWTs
         await moderator.save();
 
         res.json({
@@ -352,6 +409,7 @@ router.post('/auth', async (req, res) => {
             id: moderator._id,
             role: 'moderator',
             tenantSlug: req.tenant.slug,
+            tokenVersion: moderator.tokenVersion || 0,
             assignedSquads: moderator.assignedSquads.map(s => s._id),
             assignedRooms: moderator.assignedRooms.map(r => r._id)
         });

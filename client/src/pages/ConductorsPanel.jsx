@@ -149,7 +149,7 @@ const ConductorsPanel = () => {
     };
 
     return (
-        <div className="min-h-screen bg-transparent text-white font-inter overflow-x-hidden selection:bg-cyber-red selection:text-white relative">
+        <div className="min-h-screen bg-transparent text-white font-inter overflow-x-clip selection:bg-cyber-red selection:text-white relative">
             {/* Background Effects */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(0,240,255,0.05),transparent_50%)]"></div>

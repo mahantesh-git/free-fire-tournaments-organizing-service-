@@ -26,6 +26,7 @@ const OrganizerRegister = () => {
             const res = await api.post('/api/organizers/register', formData);
             if (res.data.success) {
                 const { token, slug } = res.data.tenant;
+                localStorage.setItem('org_token', token);
                 localStorage.setItem('token', token);
                 localStorage.setItem('tenantSlug', slug);
 
@@ -43,7 +44,7 @@ const OrganizerRegister = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-cyber-black text-white relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center bg-cyber-black text-white relative overflow-clip">
             {/* Background Effects */}
             <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-cyber-pink rounded-full filter blur-[128px]" />

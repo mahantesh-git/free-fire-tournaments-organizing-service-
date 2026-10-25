@@ -4,6 +4,7 @@ import { LogOut, Users, Trophy, RefreshCw, Save, Plus, Minus, Shield, Crosshair,
 import api from '../../services/api';
 import socketService from '../../services/socketService';
 import { toast } from 'react-hot-toast';
+import { confirmToast, promptToast } from '../../utils/confirmToast';
 
 const ModeratorPanel = () => {
     const [searchParams] = useSearchParams();
@@ -105,13 +106,23 @@ const ModeratorPanel = () => {
             if (!a.isDisqualified && b.isDisqualified) return -1;
 
             if (rankingSort === 'KILLS') {
-                return (b.totalKills || 0) - (a.totalKills || 0);
-            } else {
-                // POINTS default
+                // Primary: kills desc, tiebreaker: points desc, then name
+                if ((b.totalKills || 0) !== (a.totalKills || 0)) {
+                    return (b.totalKills || 0) - (a.totalKills || 0);
+                }
                 if ((b.squadPoints || 0) !== (a.squadPoints || 0)) {
                     return (b.squadPoints || 0) - (a.squadPoints || 0);
                 }
-                return (b.totalKills || 0) - (a.totalKills || 0);
+                return (a.squadName || '').localeCompare(b.squadName || '');
+            } else {
+                // POINTS default: primary points desc, tiebreaker kills desc, then name
+                if ((b.squadPoints || 0) !== (a.squadPoints || 0)) {
+                    return (b.squadPoints || 0) - (a.squadPoints || 0);
+                }
+                if ((b.totalKills || 0) !== (a.totalKills || 0)) {
+                    return (b.totalKills || 0) - (a.totalKills || 0);
+                }
+                return (a.squadName || '').localeCompare(b.squadName || '');
             }
         });
     }, [gameStates, tournament]);
@@ -274,9 +285,11 @@ const ModeratorPanel = () => {
         if (squad && isEliminated) {
             const alivePlayers = squad.players.filter(p => !p.isEliminated && p.ffId !== ffId);
             if (alivePlayers.length === 0) {
-                if (!confirm(`This will eliminate the entire squad "${squad.squadName}". Continue?`)) {
-                    return;
-                }
+                const confirmed = await confirmToast(
+                    `This will eliminate the entire squad "${squad.squadName}". Continue?`,
+                    { type: 'danger', confirmText: 'Eliminate Squad' }
+                );
+                if (!confirmed) return;
             }
         }
 
@@ -325,18 +338,23 @@ const ModeratorPanel = () => {
     const handleLogout = async () => {
         try {
             await api.post('/api/moderators/logout');
-            localStorage.removeItem('moderator');
-            toast.success('Logged out successfully');
-            navigate('/moderator/login');
         } catch (error) {
-            console.error(error);
+            console.error('Logout API call failed:', error);
+        } finally {
+            // Always clear all moderator auth data
+            localStorage.removeItem('mod_token');
             localStorage.removeItem('moderator');
+            toast.success('Logged out successfully', { id: 'mod-logout' });
             navigate('/moderator/login');
         }
     };
 
     const handleDisqualify = async (gameStateId, squadName) => {
-        const reason = prompt(`Reason for disqualifying "${squadName}":`, "False play / Rule violation");
+        const reason = await promptToast(
+            `Reason for disqualifying "${squadName}":`,
+            "False play / Rule violation",
+            { type: 'danger', confirmText: 'Disqualify', placeholder: 'Enter violation reason...' }
+        );
         if (reason === null) return; // Cancelled
 
         try {
@@ -351,7 +369,11 @@ const ModeratorPanel = () => {
     };
 
     const handleCompleteMatch = async (gameStateId, squadName, isLast = false) => {
-        if (!confirm(`${isLast ? 'Mark as Winner' : 'Eliminate'} "${squadName}"? Rank will be assigned automatically.`)) return;
+        const confirmed = await confirmToast(
+            `${isLast ? 'Mark as Winner' : 'Eliminate'} "${squadName}"? Rank will be assigned automatically.`,
+            { type: isLast ? 'info' : 'warning', confirmText: isLast ? 'Crown Winner' : 'Eliminate' }
+        );
+        if (!confirmed) return;
 
         try {
             const res = await api.put(`/api/squadGame/completeMatch/${gameStateId}`);
@@ -376,7 +398,7 @@ const ModeratorPanel = () => {
     }
 
     return (
-        <div className="min-h-screen bg-transparent text-white p-4 md:p-6 font-inter overflow-x-hidden selection:bg-cyber-red selection:text-white relative">
+        <div className="min-h-screen bg-transparent text-white p-4 md:p-6 font-inter overflow-x-clip selection:bg-cyber-red selection:text-white relative">
             {/* Background Effects */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,rgba(0,240,255,0.05),transparent_50%)]"></div>
@@ -477,7 +499,7 @@ const ModeratorPanel = () => {
 
                 {/* Game States */}
                 {gameStates.length === 0 ? (
-                    <div className="text-center py-20 bg-black/20 border-2 border-dashed border-gray-800 rounded-none relative overflow-hidden group">
+                    <div className="text-center py-20 bg-black/20 border-2 border-dashed border-gray-800 rounded-none relative overflow-clip group">
                         <div className="absolute inset-0 bg-[url('/grid-pattern.png')] opacity-5 mask-image-gradient-to-b"></div>
                         <Trophy className="w-16 h-16 text-gray-700 mx-auto mb-4 opacity-50 group-hover:scale-110 transition-transform duration-500" />
                         <h3 className="text-xl font-oswald font-bold text-gray-500 mb-2">NO ACTIVE SIGNALS</h3>
@@ -488,7 +510,10 @@ const ModeratorPanel = () => {
                 ) : (
                     <div className="grid gap-4">
                         {sortedGameStates.map((gs, index) => {
-                            const isWinner = index === 0 && (gs.isCompleted || sortedGameStates[0].totalKills > 0);
+                            // Booyah = survived last in-match (squadPlacement === 1)
+                            const isBooyah = gs.isCompleted && gs.squadPlacement === 1;
+                            // Leaderboard rank = sorted position (by kills/points)
+                            const leaderboardRank = index + 1;
                             return (
                                 <div key={gs._id} className={`relative bg-cyber-card border transition-all duration-300 group ${gs.isDisqualified ? 'border-cyber-red/50 shadow-[0_0_15px_rgba(255,59,59,0.2)]' : 'border-white/5 hover:border-cyber-neon/30 hover:shadow-[0_0_20px_rgba(0,240,255,0.1)]'}`}>
                                     <div
@@ -498,7 +523,7 @@ const ModeratorPanel = () => {
                                         <div className="flex items-center gap-5">
                                             <div className={`w-1 self-stretch ${gs.isPending ? 'bg-gray-600' :
                                                 gs.isDisqualified ? 'bg-cyber-red' :
-                                                    gs.isCompleted ? (isWinner ? 'bg-yellow-500 shadow-[0_0_10px_#eab308]' : 'bg-gray-500') :
+                                                    gs.isCompleted ? (isBooyah ? 'bg-yellow-500 shadow-[0_0_10px_#eab308]' : 'bg-gray-500') :
                                                         'bg-cyber-neon shadow-[0_0_10px_#00f0ff]'
                                                 }`}></div>
                                             <div>
@@ -517,13 +542,23 @@ const ModeratorPanel = () => {
                                                         </span>
                                                     )}
                                                     {gs.isCompleted && !gs.isDisqualified && (
-                                                        <span className={`px-2 py-0.5 text-[10px] font-mono font-bold border uppercase tracking-widest flex items-center gap-1 ${isWinner
-                                                            ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50'
-                                                            : 'bg-gray-800 text-gray-400 border-gray-600'
-                                                            }`}>
-                                                            {isWinner ? <Trophy className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
-                                                            {isWinner ? 'WINNER' : `ELIMINATED #${gs.squadPlacement || '-'}`}
-                                                        </span>
+                                                        <>
+                                                            {/* Survival badge: Booyah or elimination order */}
+                                                            <span className={`px-2 py-0.5 text-[10px] font-mono font-bold border uppercase tracking-widest flex items-center gap-1 ${isBooyah
+                                                                ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50'
+                                                                : 'bg-gray-800 text-gray-400 border-gray-600'
+                                                                }`}>
+                                                                {isBooyah ? <Trophy className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                                                                {isBooyah ? 'BOOYAH' : `ELIM #${gs.squadPlacement || '-'}`}
+                                                            </span>
+                                                            {/* Leaderboard rank badge */}
+                                                            <span className={`px-2 py-0.5 text-[10px] font-mono font-bold border uppercase tracking-widest ${leaderboardRank === 1
+                                                                ? 'bg-cyber-neon/10 text-cyber-neon border-cyber-neon/30'
+                                                                : 'bg-gray-800 text-gray-500 border-gray-700'
+                                                                }`}>
+                                                                RANK #{leaderboardRank}
+                                                            </span>
+                                                        </>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-4 text-xs text-gray-400 font-mono mt-1">
@@ -652,7 +687,7 @@ const ModeratorPanel = () => {
                                             {gs.isCompleted && !gs.isDisqualified && (
                                                 <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 flex items-center justify-center gap-3">
                                                     <Trophy className="w-5 h-5 text-green-500" />
-                                                    <p className="text-green-500 text-sm font-bold uppercase tracking-widest font-mono">MATCH COMPLETED // RANK: {index + 1}</p>
+                                                    <p className="text-green-500 text-sm font-bold uppercase tracking-widest font-mono">MATCH COMPLETED // LEADERBOARD RANK: #{leaderboardRank}{isBooyah ? ' // 🏆 BOOYAH' : ''}</p>
                                                 </div>
                                             )}
                                         </div>

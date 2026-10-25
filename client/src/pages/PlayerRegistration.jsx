@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import Input from '../components/common/Input';
+
 import ExcelImport from '../components/player/ExcelImport';
 import PlayerList from '../components/player/PlayerList';
 import SquadList from '../components/player/SquadList';
-import Navbar from '../components/layout/Navbar';
 import api from '../services/api';
-import { getPlayers, addPlayer } from '../services/playerService';
+import { getPlayers, addPlayer,exportPlayersToExcel } from '../services/playerService';
 import socketService from '../services/socketService';
 import Toast from '../components/common/Toast';
 import { UserPlus, FileSpreadsheet, Users, Download, Trash2, Shield } from 'lucide-react';
@@ -220,7 +218,7 @@ const PlayerRegistration = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* LEFT COLUMN: Registration Form */}
-                    <div className="card-cyber p-8 relative overflow-hidden h-fit">
+                    <div className="card-cyber p-8 relative overflow-clip h-fit">
                         {/* Corner Accents */}
                         <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyber-red opacity-100" />
                         <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyber-red opacity-100" />
@@ -299,13 +297,6 @@ const PlayerRegistration = () => {
                                                 </div>
                                             ))}
                                         </div>
-                                        <button
-                                            type="submit"
-                                            disabled={loading}
-                                            className="btn-cyber-primary w-full shadow-lg shadow-cyber-red/20 py-4 text-lg"
-                                        >
-                                            {loading ? 'REGISTERING SQUAD...' : 'CONFIRM SQUAD REGISTRATION'}
-                                        </button>
                                     </div>
                                 ) : tournament?.mode === 'DUO' ? (
                                     <div className="space-y-6">
@@ -436,7 +427,7 @@ const PlayerRegistration = () => {
                     </div>
 
                     {/* RIGHT COLUMN: Player List */}
-                    <div className="card-cyber p-0 relative overflow-hidden flex flex-col h-[600px] border-t-4 border-t-cyber-purple">
+                    <div className="card-cyber p-0 relative overflow-clip flex flex-col h-[600px] border-t-4 border-t-cyber-purple">
                         <div className="p-6 border-b border-cyber-border bg-cyber-charcoal flex justify-between items-center">
                             <h2 className="text-xl font-oswald font-bold text-white uppercase tracking-wider flex items-center gap-3">
                                 {tournament?.mode === 'SQUAD' || tournament?.mode === 'CLASH_SQUAD' ? (

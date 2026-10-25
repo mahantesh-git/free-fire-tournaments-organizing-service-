@@ -86,6 +86,22 @@ const OrganizerDashboard = () => {
         }
     };
 
+    const handleLogout = async () => {
+        try {
+            await api.post('/api/organizers/logout');
+        } catch (err) {
+            console.error('logout failed:', err);
+        } finally {
+            // Clear ALL organizer auth tokens
+            localStorage.removeItem('org_token');
+            localStorage.removeItem('token');
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('tenantSlug');
+            toast.success('Logged out successfully', { id: 'org-logout' });
+            navigate('/organizer/login');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-transparent text-white font-inter">
             {/* Cyberpunk Header */}
@@ -95,10 +111,7 @@ const OrganizerDashboard = () => {
                     <h1 className="text-2xl font-oswald font-bold tracking-wider text-white uppercase">Organizer Dashboard</h1>
                 </div>
                 <button
-                    onClick={() => {
-                        localStorage.removeItem('token');
-                        navigate('/organizer/login');
-                    }}
+                    onClick={handleLogout}
                     className="flex items-center space-x-2 text-cyber-muted hover:text-cyber-red transition-colors text-sm font-oswald uppercase tracking-wider"
                 >
                     <LogOut className="w-5 h-5" />
@@ -135,7 +148,7 @@ const OrganizerDashboard = () => {
                     <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {tournaments.map(t => (
-                                <div key={t._id} className="card-cyber p-6 group relative overflow-hidden">
+                                <div key={t._id} className="card-cyber p-6 group relative overflow-clip">
                                     {/* Corner Accents */}
                                     <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyber-red opacity-0 group-hover:opacity-100 transition-opacity" />
                                     <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyber-red opacity-0 group-hover:opacity-100 transition-opacity" />

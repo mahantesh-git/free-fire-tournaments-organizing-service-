@@ -61,10 +61,22 @@ const Navbar = () => {
                                     <span className="skew-x-[10deg] block">{link.label}</span>
                                 </Link>
                             ))}
+                            {(isAuthenticated || localStorage.getItem('org_token') || localStorage.getItem('mod_token')) && (
+                                <button
+                                    onClick={async () => {
+                                        await logout();
+                                        window.location.href = '/organizer/login';
+                                    }}
+                                    className="px-4 py-2 text-sm font-oswald font-bold tracking-wider skew-x-[-10deg] transition-all duration-200 border border-cyber-red/50 text-cyber-red hover:bg-cyber-red hover:text-white flex items-center gap-1 ml-2"
+                                >
+                                    <span className="skew-x-[10deg] flex items-center gap-1.5">
+                                        <LogOut className="w-4 h-4" />
+                                        LOGOUT
+                                    </span>
+                                </button>
+                            )}
                         </div>
                     </div>
-
-
 
                     {/* Mobile Menu Button */}
                     <div className="lg:hidden flex items-center">
@@ -95,6 +107,19 @@ const Navbar = () => {
                                 {link.label}
                             </Link>
                         ))}
+                        {(isAuthenticated || localStorage.getItem('org_token') || localStorage.getItem('mod_token')) && (
+                            <button
+                                onClick={async () => {
+                                    setIsMenuOpen(false);
+                                    await logout();
+                                    window.location.href = '/organizer/login';
+                                }}
+                                className="w-full text-left px-4 py-3 border-l-2 border-cyber-red text-sm font-oswald font-bold uppercase tracking-wider text-cyber-red hover:bg-cyber-red/10 flex items-center gap-2 mt-2"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                LOGOUT
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
