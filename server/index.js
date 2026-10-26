@@ -38,12 +38,21 @@ const app = express();
 const httpServer = createServer(app);
 
 // CORS setup
+const allowedOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+const corsOrigin = (origin, callback) => {
+  // allow requests with no origin (Postman, server-to-server)
+  if (!origin || allowedOrigins.includes(origin)) {
+    return callback(null, true);
+  }
+  return callback(new Error(`CORS blocked: ${origin}`));
+};
+
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow all origins for now to support various tenant subdomains
-    // In production, we should validate against the Tenant list in Global DB
-    callback(null, true);
-  },
+  origin: corsOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'x-tenant-id'],
   credentials: true
@@ -55,7 +64,7 @@ app.set('trust proxy', true);
 // Socket.io setup
 const io = new Server(httpServer, {
   cors: {
-    origin: (origin, callback) => callback(null, true),
+    origin: corsOrigin,
     methods: ['GET', 'POST'],
     credentials: true,
     allowedHeaders: ['x-tenant-id']

@@ -1,16 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
     port: 5173,
-    allowedHosts: ['localhost', 'leila-pisciform-patsy.ngrok-free.dev', '.ngrok-free.dev'],
+    allowedHosts: ['localhost', 'leila-pisciform-patsy.ngrok-free.dev', '.ngrok-free.dev', 'free-fire-tournaments-organizing-service.onrender.com', 'esports-platform-frontend.onrender.com'],
     proxy: {
       '/api': {
-        target: 'http://localhost:9000',
+        target: process.env.VITE_API_BASE_URL,
         changeOrigin: true,
       },
     },
