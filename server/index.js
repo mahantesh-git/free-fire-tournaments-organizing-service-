@@ -38,17 +38,46 @@ const app = express();
 const httpServer = createServer(app);
 
 // CORS setup
-const allowedOrigins = (process.env.CORS_ORIGINS || '')
+const envOrigins = (process.env.CORS_ORIGINS || process.env.DOMAIN || '')
   .split(',')
-  .map(o => o.trim())
+  .map(o => o.trim().replace(/\/$/, ''))
   .filter(Boolean);
 
+const allowedOrigins = [
+  ...envOrigins,
+  'https://free-fire-tournaments-organizing-service.onrender.com',
+  'https://esports-platform-frontend.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:9000',
+  'http://127.0.0.1:5173'
+];
+
 const corsOrigin = (origin, callback) => {
-  // allow requests with no origin (Postman, server-to-server)
-  if (!origin || allowedOrigins.includes(origin)) {
+  // Allow requests with no origin (Postman, curl, server-to-server)
+  if (!origin) {
     return callback(null, true);
   }
-  return callback(new Error(`CORS blocked: ${origin}`));
+
+  // Allow if explicitly configured or wildcard
+  if (process.env.CORS_ORIGINS === '*' || allowedOrigins.includes(origin)) {
+    return callback(null, true);
+  }
+
+  // Allow any onrender.com, railway.app, ngrok, or localhost origin
+  if (
+    origin.endsWith('.onrender.com') ||
+    origin.endsWith('.railway.app') ||
+    origin.endsWith('.ngrok-free.dev') ||
+    origin.endsWith('.ngrok-free.app') ||
+    origin.includes('localhost:') ||
+    origin.includes('127.0.0.1:')
+  ) {
+    return callback(null, true);
+  }
+
+  console.warn(`[CORS] Rejected origin: ${origin}`);
+  return callback(null, false);
 };
 
 app.use(cors({

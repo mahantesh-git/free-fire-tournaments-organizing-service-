@@ -57,6 +57,7 @@ export const getTenantSlug = () => {
  * But we are strictly separating headers for explicit control.
  */
 export const getApiUrl = () => {
-    // Determine API URL based on environment
-    return import.meta.env.VITE_API_URL || 'http://localhost:9000';
+    // Determine API URL based on environment (supports VITE_API_URL and VITE_API_BASE_URL)
+    const rawUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000';
+    return rawUrl.replace(/\/$/, '');
 };

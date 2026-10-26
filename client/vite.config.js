@@ -11,7 +11,7 @@ export default defineConfig({
     allowedHosts: ['localhost', 'leila-pisciform-patsy.ngrok-free.dev', '.ngrok-free.dev', 'free-fire-tournaments-organizing-service.onrender.com', 'esports-platform-frontend.onrender.com'],
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL,
+        target: process.env.VITE_API_BASE_URL || process.env.VITE_API_URL || 'http://localhost:9000',
         changeOrigin: true,
       },
     },
