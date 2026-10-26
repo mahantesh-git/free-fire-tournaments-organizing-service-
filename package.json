@@ -4,8 +4,7 @@
   "type": "module",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "nodemon server/index.js"
+    "start": "node server/index.js"
   },
   "dependencies": {
     "@simplewebauthn/server": "^13.2.2",
