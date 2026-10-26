@@ -58,6 +58,10 @@ export const getTenantSlug = () => {
  */
 export const getApiUrl = () => {
     // Determine API URL based on environment (supports VITE_API_URL and VITE_API_BASE_URL)
-    const rawUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000';
-    return rawUrl.replace(/\/$/, '');
+    let rawUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000';
+    rawUrl = rawUrl.trim().replace(/\/$/, '');
+    if (rawUrl.endsWith('/api')) {
+        rawUrl = rawUrl.slice(0, -4);
+    }
+    return rawUrl;
 };

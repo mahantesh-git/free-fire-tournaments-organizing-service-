@@ -2,8 +2,12 @@ import { io } from 'socket.io-client';
 import { getTenantSlug } from '../utils/tenant';
 
 // Use environment variable or default to backend port 9000
-const rawSocketUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000';
-const SOCKET_URL = rawSocketUrl.replace(/\/$/, '');
+let rawSocketUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000';
+rawSocketUrl = rawSocketUrl.trim().replace(/\/$/, '');
+if (rawSocketUrl.endsWith('/api')) {
+    rawSocketUrl = rawSocketUrl.slice(0, -4);
+}
+const SOCKET_URL = rawSocketUrl;
 
 class SocketService {
     constructor() {

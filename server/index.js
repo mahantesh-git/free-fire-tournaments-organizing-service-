@@ -90,6 +90,14 @@ app.use(cors({
 app.use(express.json());
 app.set('trust proxy', true);
 
+// Defensive normalizer for duplicated /api/api/ prefixes
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/api/')) {
+    req.url = req.url.replace(/^\/api\/api\//, '/api/');
+  }
+  next();
+});
+
 // Socket.io setup
 const io = new Server(httpServer, {
   cors: {
