@@ -1,5 +1,4 @@
 import express from "express";
-import mongoose from "mongoose";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -55,7 +54,7 @@ app.set('trust proxy', true);
 // Socket.io setup
 const io = new Server(httpServer, {
   cors: {
-    origin: "*", // allow tenant subdomains
+    origin: (origin, callback) => callback(null, true),
     methods: ['GET', 'POST'],
     credentials: true,
     allowedHeaders: ['x-tenant-id']
@@ -100,14 +99,14 @@ io.on('connection', (socket) => {
   // 1. Handshake Identification
   const tenantId = socket.handshake.auth?.tenantId || socket.handshake.headers['x-tenant-id'];
   if (tenantId) {
-    console.log(`🔌 [Socket] ${socketId} identified as tenant: ${tenantId} via handshake`);
+    console.log(` [Socket] ${socketId} identified as tenant: ${tenantId} via handshake`);
     socket.join(tenantId);
   }
 
   // 2. Explicit Join (Safety net for SPAs)
   socket.on('join_tenant', (targetTenantId) => {
     if (!targetTenantId) return;
-    console.log(`🔌 [Socket] ${socketId} explicitly joining tenant: ${targetTenantId}`);
+    console.log(` [Socket] ${socketId} explicitly joining tenant: ${targetTenantId}`);
 
     // Safety: Leave other tenant rooms (but keep own socket.id room)
     const currentRooms = Array.from(socket.rooms);
@@ -120,7 +119,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', (reason) => {
-    console.log(`🔌 [Socket] ${socketId} disconnected. Reason: ${reason}`);
+    console.log(` [Socket] ${socketId} disconnected. Reason: ${reason}`);
   });
 });
 
@@ -138,4 +137,4 @@ app.get(/^\/(?!api|socket\.io).*/, (req, res) => {
 });
 
 const PORT = process.env.PORT || 9000;
-httpServer.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+httpServer.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

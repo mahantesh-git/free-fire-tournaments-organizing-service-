@@ -18,10 +18,10 @@
     "mongoose": "^8.23.0",
     "multer": "^1.4.5-lts.1",
     "socket.io": "^4.8.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "nodemailer": "^10.2.1"
   },
   "devDependencies": {
-    "nodemailer": "^10.2.1",
     "nodemon": "^3.1.11"
   }
 }

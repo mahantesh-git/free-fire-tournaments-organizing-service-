@@ -12,17 +12,34 @@ export const getTenantSlug = () => {
     if (querySlug) return querySlug;
 
     // 2. Subdomain check (Production/Dev Subdomains)
-    if (hostname.includes('localhost')) {
+    if (hostname.includes('localhost') || hostname === '127.0.0.1') {
         const parts = hostname.split('.');
         if (parts.length > 1 && parts[0] !== 'localhost') {
             return parts[0];
         }
-    }
+    } else {
+        const parts = hostname.split('.');
+        const isPlatformDomain = hostname.endsWith('.onrender.com') ||
+                                 hostname.endsWith('.railway.app') ||
+                                 hostname.endsWith('.up.railway.app') ||
+                                 hostname.endsWith('.ngrok-free.dev') ||
+                                 hostname.endsWith('.ngrok-free.app') ||
+                                 hostname.endsWith('.vercel.app') ||
+                                 hostname.endsWith('.netlify.app');
 
-    // Production: tenant.myesports.com
-    const parts = hostname.split('.');
-    if (parts.length > 2) {
-        return parts[0];
+        if (isPlatformDomain) {
+            // Platform hosts have base domains like myapp.onrender.com (3 parts)
+            // A tenant subdomain would be tenant.myapp.onrender.com (4 parts)
+            const minParts = (hostname.endsWith('.up.railway.app') || hostname.endsWith('.ngrok-free.dev') || hostname.endsWith('.ngrok-free.app')) ? 4 : 3;
+            if (parts.length > minParts) {
+                return parts[0];
+            }
+        } else if (parts.length > 2) {
+            // Custom domain: tenant.myesports.com
+            if (parts[0] !== 'www') {
+                return parts[0];
+            }
+        }
     }
 
     // Fallback: Check LocalStorage (For Localhost/Dev or if subdomain is missing but user is logged in)

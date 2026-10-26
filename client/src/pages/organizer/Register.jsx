@@ -30,10 +30,16 @@ const OrganizerRegister = () => {
                 localStorage.setItem('token', token);
                 localStorage.setItem('tenantSlug', slug);
 
-                if (window.location.hostname === 'localhost') {
+                const isPlatformDomain = window.location.hostname.endsWith('.onrender.com') ||
+                    window.location.hostname.endsWith('.railway.app') ||
+                    window.location.hostname.endsWith('.up.railway.app') ||
+                    window.location.hostname.includes('localhost') ||
+                    window.location.hostname === '127.0.0.1';
+
+                if (isPlatformDomain) {
                     navigate('/organizer/dashboard');
                 } else {
-                    window.location.href = `http://${slug}.${window.location.host}/organizer/dashboard`;
+                    window.location.href = `${window.location.protocol}//${slug}.${window.location.host}/organizer/dashboard`;
                 }
             }
         } catch (err) {

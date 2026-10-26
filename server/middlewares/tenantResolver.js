@@ -12,8 +12,9 @@ export const tenantResolver = async (req, res, next) => {
             const host = req.get('host'); // e.g., tenant1.localhost:3000 or tenant1.platform.com
             const subdomain = host.split('.')[0];
 
-            // Ignore 'localhost' or 'www' or main domain if likely not a tenant
-            if (subdomain && subdomain !== 'localhost' && subdomain !== 'www' && subdomain !== 'api') {
+            // Ignore 'localhost', 'www', 'api', or cloud platform domain prefixes
+            const isPlatformHost = host.includes('railway.app') || host.includes('onrender.com') || host.includes('ngrok-free.dev');
+            if (subdomain && subdomain !== 'localhost' && subdomain !== 'www' && subdomain !== 'api' && !isPlatformHost) {
                 tenantSlug = subdomain;
             }
         }

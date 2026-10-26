@@ -26,15 +26,17 @@ const TournamentDetails = () => {
     const [activeTab, setActiveTab] = useState('overview');
 
     const tenantSlug = getTenantSlug();
-    const isLocalhost = window.location.hostname.includes('localhost') && !window.location.hostname.includes('.');
+    const hasSubdomain = tenantSlug && window.location.hostname.startsWith(`${tenantSlug}.`);
+    const needsTenantParam = !hasSubdomain && tenantSlug;
+
     const registrationLink = tournament
-        ? (isLocalhost
+        ? (needsTenantParam
             ? `${window.location.protocol}//${window.location.host}/register?tenant=${tenantSlug}&mode=${tournament.mode}&tournamentId=${tournamentId}`
             : `${window.location.protocol}//${window.location.host}/register?mode=${tournament.mode}&tournamentId=${tournamentId}`)
         : '';
 
     const liveLink = tournament
-        ? (isLocalhost && tenantSlug
+        ? (needsTenantParam
             ? `${window.location.protocol}//${window.location.host}/live/${tournamentId}?tenant=${tenantSlug}`
             : `${window.location.protocol}//${window.location.host}/live/${tournamentId}`)
         : '';
