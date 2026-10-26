@@ -22,6 +22,7 @@ import TournamentDetails from './pages/organizer/TournamentDetails';
 import ModeratorManager from './pages/organizer/ModeratorManager';
 import ModeratorLogin from './pages/moderator/ModeratorLogin';
 import ModeratorPanel from './pages/moderator/ModeratorPanel';
+import SwipeableToast from './components/common/SwipeableToast';
 
 function App() {
   return (
@@ -58,29 +59,33 @@ function App() {
             <Toaster
               position="bottom-center"
               toastOptions={{
-                duration: 3000,
+                duration: 3500,
                 style: {
-                  background: '#1f2937',
-                  color: '#fff',
+                  background: '#111827',
+                  color: '#ffffff',
                   border: '1px solid #374151',
-                  padding: '12px 20px',
+                  padding: '10px 14px',
                   borderRadius: '12px',
                   fontSize: '14px',
                 },
                 success: {
+                  duration: 3000,
                   iconTheme: {
                     primary: '#10b981',
-                    secondary: '#fff',
+                    secondary: '#ffffff',
                   },
                 },
                 error: {
+                  duration: 4500,
                   iconTheme: {
                     primary: '#ef4444',
-                    secondary: '#fff',
+                    secondary: '#ffffff',
                   },
                 },
               }}
-            />
+            >
+              {(t) => <SwipeableToast toast={t} />}
+            </Toaster>
           </div>
         </Router>
       </TournamentProvider>

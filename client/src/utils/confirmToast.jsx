@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
+import { X } from 'lucide-react';
 
 // Active toast trackers to prevent stacking multiple confirm/prompt toasts
 let activeConfirm = null;
@@ -72,14 +73,28 @@ export const confirmToast = (message, options = {}) => {
                             : 'bg-[#1a1a0a] border-yellow-500/40 shadow-yellow-500/10'
                     } p-4`}
                 >
-                    {/* Icon + Message */}
-                    <div className="flex items-start gap-3">
-                        <span className="text-lg mt-0.5">
-                            {type === 'danger' ? '⚠️' : type === 'info' ? 'ℹ️' : '🔶'}
-                        </span>
-                        <p className="text-sm text-gray-200 font-medium leading-relaxed">
-                            {message}
-                        </p>
+                    {/* Icon + Message + Cancel X */}
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                            <span className="text-lg mt-0.5">
+                                {type === 'danger' ? '⚠️' : type === 'info' ? 'ℹ️' : '🔶'}
+                            </span>
+                            <p className="text-sm text-gray-200 font-medium leading-relaxed">
+                                {message}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                toast.dismiss(toastId);
+                                safeResolve(false);
+                            }}
+                            className="p-1 -mr-1 -mt-1 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
+                            title="Cancel"
+                            aria-label="Cancel"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                     </div>
 
                     {/* Action Buttons */}
@@ -182,24 +197,35 @@ const PromptToastDialog = ({
                     : 'bg-[#1a1a0a] border-yellow-500/40 shadow-yellow-500/10'
             } p-4`}
         >
-            <div className="flex items-start gap-3">
-                <span className="text-lg mt-0.5">
-                    {type === 'danger' ? '⛔' : type === 'info' ? 'ℹ️' : '⚠️'}
-                </span>
-                <div className="flex-1">
-                    <p className="text-sm text-gray-200 font-medium leading-relaxed mb-2">
-                        {message}
-                    </p>
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder={placeholder}
-                        className="w-full px-3 py-1.5 text-xs bg-black/60 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-red-400 font-mono transition-colors"
-                    />
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                    <span className="text-lg mt-0.5">
+                        {type === 'danger' ? '⛔' : type === 'info' ? 'ℹ️' : '⚠️'}
+                    </span>
+                    <div className="flex-1">
+                        <p className="text-sm text-gray-200 font-medium leading-relaxed mb-2">
+                            {message}
+                        </p>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={value}
+                            onChange={(e) => setValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder={placeholder}
+                            className="w-full px-3 py-1.5 text-xs bg-black/60 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:border-red-400 font-mono transition-colors"
+                        />
+                    </div>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="p-1 -mr-1 -mt-1 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
+                    title="Cancel"
+                    aria-label="Cancel"
+                >
+                    <X className="w-4 h-4" />
+                </button>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Card from '../common/Card';
+import api from '../../services/api';
 import { Trophy, Users, Target, TrendingUp, Award, Download } from 'lucide-react';
 
 const TournamentAnalytics = ({ tournamentId }) => {
@@ -14,16 +15,13 @@ const TournamentAnalytics = ({ tournamentId }) => {
     const loadAnalytics = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`/api/analytics/tournament/${tournamentId}/overview`, {
-                headers: {
-                    'x-tenant-id': localStorage.getItem('tenantSlug')
-                }
-            });
-            const data = await response.json();
-            setAnalytics(data.analytics);
+            setError(null);
+            const response = await api.get(`/api/analytics/tournament/${tournamentId}/overview`);
+            setAnalytics(response.data.analytics);
         } catch (err) {
             console.error('Failed to load analytics:', err);
-            setError(err.message);
+            const message = err.response?.data?.error || err.response?.data?.message || err.message;
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -31,13 +29,11 @@ const TournamentAnalytics = ({ tournamentId }) => {
 
     const handleExport = async (format) => {
         try {
-            const response = await fetch(`/api/analytics/tournament/${tournamentId}/export?format=${format}`, {
-                headers: {
-                    'x-tenant-id': localStorage.getItem('tenantSlug')
-                }
+            const response = await api.get(`/api/analytics/tournament/${tournamentId}/export?format=${format}`, {
+                responseType: 'blob'
             });
 
-            const blob = await response.blob();
+            const blob = new Blob([response.data]);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -69,7 +65,7 @@ const TournamentAnalytics = ({ tournamentId }) => {
 
     if (!analytics) return null;
 
-    const { overview, leaderboard, topKillers } = analytics;
+    const { overview, leaderboard = [], topKillers = [] } = analytics;
 
     return (
         <div className="space-y-6">
@@ -104,7 +100,7 @@ const TournamentAnalytics = ({ tournamentId }) => {
                         <Trophy className="w-8 h-8 text-cyber-red" />
                         <div>
                             <div className="text-cyber-muted text-sm font-oswald uppercase">Total Matches</div>
-                            <div className="text-2xl font-bold text-white">{overview.totalMatches}</div>
+                            <div className="text-2xl font-bold text-white">{overview?.totalMatches ?? 0}</div>
                         </div>
                     </div>
                 </Card>
@@ -114,7 +110,7 @@ const TournamentAnalytics = ({ tournamentId }) => {
                         <Target className="w-8 h-8 text-cyber-pink" />
                         <div>
                             <div className="text-cyber-muted text-sm font-oswald uppercase">Total Kills</div>
-                            <div className="text-2xl font-bold text-white">{overview.totalKills}</div>
+                            <div className="text-2xl font-bold text-white">{overview?.totalKills ?? 0}</div>
                         </div>
                     </div>
                 </Card>
@@ -124,7 +120,7 @@ const TournamentAnalytics = ({ tournamentId }) => {
                         <Users className="w-8 h-8 text-emerald-400" />
                         <div>
                             <div className="text-cyber-muted text-sm font-oswald uppercase">Participants</div>
-                            <div className="text-2xl font-bold text-white">{overview.totalParticipants}</div>
+                            <div className="text-2xl font-bold text-white">{overview?.totalParticipants ?? 0}</div>
                         </div>
                     </div>
                 </Card>
@@ -135,7 +131,7 @@ const TournamentAnalytics = ({ tournamentId }) => {
                         <div>
                             <div className="text-cyber-muted text-sm font-oswald uppercase">Avg Duration</div>
                             <div className="text-2xl font-bold text-white">
-                                {Math.floor(overview.averageMatchDuration / 60)}m
+                                {Math.floor((overview?.averageMatchDuration || 0) / 60)}m
                             </div>
                         </div>
                     </div>
@@ -151,29 +147,33 @@ const TournamentAnalytics = ({ tournamentId }) => {
                         Top Squads
                     </h3>
                     <div className="space-y-2">
-                        {leaderboard.slice(0, 5).map((squad, index) => (
-                            <div
-                                key={squad._id}
-                                className="flex items-center justify-between p-3 bg-cyber-charcoal/50 border-l-2"
-                                style={{
-                                    borderLeftColor:
-                                        index === 0 ? '#10b981' :
-                                            index === 1 ? '#6366f1' :
-                                                index === 2 ? '#f59e0b' : '#64748b'
-                                }}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className="text-cyber-muted font-mono text-sm w-6">
-                                        #{index + 1}
-                                    </span>
-                                    <span className="text-white font-oswald">{squad.squadName}</span>
+                        {leaderboard.length === 0 ? (
+                            <div className="text-cyber-muted text-center py-4">No squad data available yet</div>
+                        ) : (
+                            leaderboard.slice(0, 5).map((squad, index) => (
+                                <div
+                                    key={squad._id}
+                                    className="flex items-center justify-between p-3 bg-cyber-charcoal/50 border-l-2"
+                                    style={{
+                                        borderLeftColor:
+                                            index === 0 ? '#10b981' :
+                                                index === 1 ? '#6366f1' :
+                                                    index === 2 ? '#f59e0b' : '#64748b'
+                                    }}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-cyber-muted font-mono text-sm w-6">
+                                            #{index + 1}
+                                        </span>
+                                        <span className="text-white font-oswald">{squad.squadName}</span>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-sm">
+                                        <span className="text-cyber-muted">{squad.totalKills} kills</span>
+                                        <span className="text-cyber-pink font-bold">{squad.totalPoints} pts</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-4 text-sm">
-                                    <span className="text-cyber-muted">{squad.totalKills} kills</span>
-                                    <span className="text-cyber-pink font-bold">{squad.totalPoints} pts</span>
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </Card>
 
@@ -184,26 +184,30 @@ const TournamentAnalytics = ({ tournamentId }) => {
                         Top Killers
                     </h3>
                     <div className="space-y-2">
-                        {topKillers.slice(0, 5).map((player, index) => (
-                            <div
-                                key={player.ffId}
-                                className="flex items-center justify-between p-3 bg-cyber-charcoal/50"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className="text-cyber-muted font-mono text-sm w-6">
-                                        #{index + 1}
-                                    </span>
-                                    <div>
-                                        <div className="text-white font-oswald">{player.playerName}</div>
-                                        <div className="text-cyber-muted text-xs font-mono">{player.ffName}</div>
+                        {topKillers.length === 0 ? (
+                            <div className="text-cyber-muted text-center py-4">No kill data available yet</div>
+                        ) : (
+                            topKillers.slice(0, 5).map((player, index) => (
+                                <div
+                                    key={player.ffId}
+                                    className="flex items-center justify-between p-3 bg-cyber-charcoal/50"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-cyber-muted font-mono text-sm w-6">
+                                            #{index + 1}
+                                        </span>
+                                        <div>
+                                            <div className="text-white font-oswald">{player.playerName}</div>
+                                            <div className="text-cyber-muted text-xs font-mono">{player.ffName}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-cyber-red font-bold">{player.totalKills} kills</div>
+                                        <div className="text-cyber-muted text-xs">{player.matches} matches</div>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <div className="text-cyber-red font-bold">{player.totalKills} kills</div>
-                                    <div className="text-cyber-muted text-xs">{player.matches} matches</div>
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </Card>
             </div>
