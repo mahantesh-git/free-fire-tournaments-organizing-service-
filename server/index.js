@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import fs from 'fs';
+import mongoose from 'mongoose';
 
 // Routes
 import conductorRoutes from "./routes/conductorRoutes.js";
@@ -66,6 +67,33 @@ app.set('io', io);
 connectGlobalDB().then(() => {
   console.log('🌍 Global System Initialized');
 });
+
+// Health Check Endpoints (No Tenant Context Required - used by Railway/Render/Uptime monitors)
+const healthHandler = (req, res) => {
+  const dbStatus = mongoose.connection.readyState;
+  const dbStatusMap = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+  };
+
+  const isHealthy = dbStatus === 1;
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'healthy' : 'unhealthy',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    database: {
+      status: dbStatusMap[dbStatus] || 'unknown',
+      connected: isHealthy
+    },
+    environment: process.env.NODE_ENV || 'production'
+  });
+};
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 // GLOBAL ROUTES (No Tenant Context Required)
 app.use('/api/organizers', organizerRoutes);
