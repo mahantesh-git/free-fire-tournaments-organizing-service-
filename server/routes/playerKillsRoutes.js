@@ -12,6 +12,8 @@ import fs from 'fs';
 import path from 'path';
 
 import tournamentSchema from '../models/tenant/Tournament.js';
+import duoSchema from '../models/tenant/Duo.js';
+import { AutoRoomService } from '../services/AutoRoomService.js';
 
 const router = express.Router();
 
@@ -21,6 +23,7 @@ const upload = multer({ dest: path.join(process.cwd(), 'uploads/') });
 const getModels = (req) => ({
     Kills: getTenantModel(req.tenantConnection, 'Kills', killsSchema),
     Squad: getTenantModel(req.tenantConnection, 'Squad', squadSchema),
+    Duo: getTenantModel(req.tenantConnection, 'Duo', duoSchema),
     SquadGameState: getTenantModel(req.tenantConnection, 'SquadGameState', squadGameStateSchema),
     SquadLeaderboard: getTenantModel(req.tenantConnection, 'SquadLeaderboard', squadLeaderboardSchema),
     GameState: getTenantModel(req.tenantConnection, 'GameState', gameStateSchema),
@@ -51,7 +54,24 @@ router.post('/playerRegister', async (req, res) => {
 
         const player = new Kills({ playerName, ffName, ffId, tournamentId });
         await player.save();
-        res.status(201).json({ message: 'Player registered successfully', player });
+
+        let roomAssignment = null;
+        if (tournament.autoRoomAssignment !== false) {
+            try {
+                roomAssignment = await AutoRoomService.assignParticipant({
+                    tenantConnection: req.tenantConnection,
+                    tournamentId,
+                    participantType: 'PLAYER',
+                    participantId: player._id,
+                    io: req.app.get('io'),
+                    tenantId: req.headers['x-tenant-id']
+                });
+            } catch (roomErr) {
+                console.error('Auto-room assignment error for player:', roomErr);
+            }
+        }
+
+        res.status(201).json({ message: 'Player registered successfully', player, roomAssignment });
     } catch (err) {
         if (err.code === 11000) {
             const field = Object.keys(err.keyPattern)[0];
@@ -638,11 +658,29 @@ router.post('/squadRegister', async (req, res) => {
 
         await squad.save();
 
+        let roomAssignment = null;
+        try {
+            const Tournament = getTenantModel(req.tenantConnection, 'Tournament', (await import('../models/tenant/Tournament.js')).default);
+            const tournament = await Tournament.findById(tournamentId);
+            if (tournament && tournament.autoRoomAssignment !== false) {
+                roomAssignment = await AutoRoomService.assignParticipant({
+                    tenantConnection: req.tenantConnection,
+                    tournamentId,
+                    participantType: 'SQUAD',
+                    participantId: squad._id,
+                    io: req.app.get('io'),
+                    tenantId: req.headers['x-tenant-id']
+                });
+            }
+        } catch (roomErr) {
+            console.error('Auto-room assignment error for squad in kills route:', roomErr);
+        }
+
         if (req.app.get('io')) {
             req.app.get('io').emit('squadUpdate', { type: 'squadRegistered', squad });
         }
 
-        res.status(201).json({ success: true, message: 'Squad registered successfully', squad });
+        res.status(201).json({ success: true, message: 'Squad registered successfully', squad, roomAssignment });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -805,6 +843,20 @@ router.get('/getSquads', async (req, res) => {
     } catch (error) {
         console.error('Error fetching squads:', error);
         res.status(500).json({ success: false, message: 'Error fetching squads' });
+    }
+});
+
+// Get all duos (compatibility alias)
+router.get('/getDuos', async (req, res) => {
+    try {
+        const { Duo } = getModels(req);
+        const { tournamentId } = req.query;
+        const query = tournamentId ? { tournamentId } : {};
+        const duos = await Duo.find(query).sort({ registeredAt: -1 }).lean();
+        res.status(200).json({ success: true, duos });
+    } catch (error) {
+        console.error('Error fetching duos:', error);
+        res.status(500).json({ success: false, message: 'Error fetching duos' });
     }
 });
 

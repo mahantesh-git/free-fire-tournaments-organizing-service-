@@ -22,7 +22,16 @@ const tournamentSchema = new mongoose.Schema({
     },
     maxPlayersPerRoom: {
         type: Number,
-        default: 48
+        default: 48,
+        min: 2
+    },
+    autoRoomAssignment: {
+        type: Boolean,
+        default: true
+    },
+    roomsLocked: {
+        type: Boolean,
+        default: false
     },
     totalRooms: {
         type: Number,

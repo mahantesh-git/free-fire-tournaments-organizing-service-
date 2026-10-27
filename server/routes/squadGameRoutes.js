@@ -31,14 +31,25 @@ const finalizeSquadMatch = async (req, gameStateId, providedPlacement = null) =>
 
     // 1. Fetch the squad being finalized
     const gameState = await SquadGameState.findById(gameStateId);
-    if (!gameState || !gameState.isActive) {
-        console.log(`⚠️ finalizeSquadMatch: GameState ${gameStateId} not found or already completed.`);
+    if (!gameState) {
+        console.log(`⚠️ finalizeSquadMatch: GameState ${gameStateId} not found.`);
         return null;
     }
 
+    if (gameState.isCompleted || !gameState.isActive) {
+        console.log(`ℹ️ finalizeSquadMatch: GameState ${gameStateId} already completed.`);
+        let leaderboard = await SquadLeaderboard.findOne({ squadId: gameState.squadId });
+        return { gameState, leaderboard, alreadyCompleted: true };
+    }
+
     // 2. Find the room to get all participating squads/players
-    // Check squads, duos, and players arrays
-    let room = await Room.findOne({ squads: gameState.squadId });
+    let room = null;
+    if (gameState.roomId) {
+        room = await Room.findById(gameState.roomId);
+    }
+    if (!room) {
+        room = await Room.findOne({ squads: gameState.squadId });
+    }
     if (!room) {
         // Try finding by duo ID (DUO mode)
         room = await Room.findOne({ duos: gameState.squadId });
@@ -48,31 +59,36 @@ const finalizeSquadMatch = async (req, gameStateId, providedPlacement = null) =>
         room = await Room.findOne({ players: gameState.squadId });
     }
 
-    if (!room) {
-        console.error(`❌ [Rank Error] No room found for squad/player ${gameState.squadId}`);
-        return null;
-    }
-
     // Determine which participant list to use based on room mode
-    let participantsList;
-    if (room.mode === 'SOLO') {
-        participantsList = room.players;
-    } else if (room.mode === 'DUO') {
-        participantsList = room.duos;
-    } else if (room.mode === 'SQUAD' || room.mode === 'CLASH_SQUAD') {
-        participantsList = room.squads;
-    } else {
-        participantsList = room.squads; // default fallback
+    let participantsList = [];
+    if (room) {
+        if (room.mode === 'SOLO') {
+            participantsList = room.players || [];
+        } else if (room.mode === 'DUO') {
+            participantsList = room.duos || [];
+        } else if (room.mode === 'SQUAD' || room.mode === 'CLASH_SQUAD') {
+            participantsList = room.squads || [];
+        } else {
+            participantsList = room.squads || [];
+        }
     }
 
     // 3. Robust Ranking Logic: 
     // Your rank is the number of squads that were still "alive" (isActive) when you were eliminated.
-    const activeStates = await SquadGameState.find({
-        squadId: { $in: participantsList },
+    const activeQuery = {
         matchNumber: gameState.matchNumber,
         isActive: true,
         isDisqualified: false
-    });
+    };
+    if (gameState.roomId) {
+        activeQuery.roomId = gameState.roomId;
+    } else if (participantsList.length > 0) {
+        activeQuery.squadId = { $in: participantsList };
+    } else if (gameState.tournamentId) {
+        activeQuery.tournamentId = gameState.tournamentId;
+    }
+
+    const activeStates = await SquadGameState.find(activeQuery);
 
     let placement = providedPlacement || activeStates.length;
 
@@ -405,12 +421,40 @@ router.post('/startRoomMatch', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Room not found' });
         }
 
+        // Auto-heal: If SQUAD or CLASH_SQUAD squads were accidentally saved to room.players
+        if (room.mode === 'SQUAD' || room.mode === 'CLASH_SQUAD') {
+            if (room.players && room.players.length > 0) {
+                const misplacedSquads = await Squad.find({ _id: { $in: room.players } });
+                if (misplacedSquads.length > 0) {
+                    const misplacedIds = misplacedSquads.map(s => s._id.toString());
+                    const existingSquadIds = (room.squads || []).map(s => s.toString());
+                    const newSquadIds = misplacedSquads
+                        .filter(s => !existingSquadIds.includes(s._id.toString()))
+                        .map(s => s._id);
+
+                    await Room.findByIdAndUpdate(room._id, {
+                        $addToSet: { squads: { $each: misplacedSquads.map(s => s._id) } },
+                        $pull: { players: { $in: misplacedSquads.map(s => s._id) } }
+                    });
+                    room.squads = [...(room.squads || []), ...newSquadIds];
+                    room.players = room.players.filter(p => !misplacedIds.includes(p.toString()));
+                }
+            }
+        }
+
         // Determine participants based on mode
         const participantsList = room.mode === 'SOLO'
             ? (room.players || [])
             : room.mode === 'DUO'
                 ? (room.duos || [])
                 : (room.squads || []);
+
+        if (!participantsList || participantsList.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot start match: No participants have been assigned to this room yet.'
+            });
+        }
 
         // Find all match numbers already created for this room/participants
         const existingMatches = await SquadGameState.distinct('matchNumber', {
@@ -441,7 +485,7 @@ router.post('/startRoomMatch', async (req, res) => {
 
         // 3. Compute activeMatchNumber: next available match number
         const maxPlayed = playedNumbers.length > 0 ? Math.max(...playedNumbers) : 0;
-        let activeMatchNumber = Math.max(room.currentMatchNumber || 1, maxPlayed + 1);
+        let activeMatchNumber = playedNumbers.length > 0 ? (maxPlayed + 1) : 1;
 
         // Ensure no collisions with any existing match data
         while (playedNumbers.includes(activeMatchNumber)) {
@@ -552,6 +596,13 @@ router.post('/startRoomMatch', async (req, res) => {
             }
         }
 
+        if (createdGameStates.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot start match: No participant records found in this room to initialize.'
+            });
+        }
+
         // 3. Advance the room's match counter AFTER successful creation
         //    currentMatchNumber now points to the NEXT match to be started
         room.matchesPlayed = (room.matchesPlayed || 0) + 1;
@@ -627,7 +678,7 @@ router.get('/roomMatches/:roomId', async (req, res) => {
 
         // currentMatchNumber is the NEXT match to start
         const maxPlayed = playedMatchNumbers.length > 0 ? Math.max(...playedMatchNumbers) : 0;
-        const currentMatchNumber = Math.max(room.currentMatchNumber || 1, maxPlayed + 1);
+        const currentMatchNumber = playedMatchNumbers.length > 0 ? (maxPlayed + 1) : 1;
 
         // Self-heal room doc if out of sync
         if (room.currentMatchNumber !== currentMatchNumber) {
@@ -687,10 +738,20 @@ router.get('/roomMatchState/:roomId', async (req, res) => {
             }).lean();
 
         } else {
-            // SQUAD MODE: Existing logic
-            // Filter out any squads that failed to populate (missing from collection)
-            const originalSquads = room.squads || [];
-            room.squads = originalSquads.filter(s => s !== null);
+            // SQUAD / CLASH_SQUAD MODE
+            let squadList = (room.squads || []).filter(s => s !== null);
+            if (squadList.length === 0 && room.players && room.players.length > 0) {
+                const Squad = getTenantModel(req.tenantConnection, 'Squad', (await import('../models/tenant/Squad.js')).default);
+                const misplaced = await Squad.find({ _id: { $in: room.players } });
+                if (misplaced.length > 0) {
+                    await Room.findByIdAndUpdate(room._id, {
+                        $addToSet: { squads: { $each: misplaced.map(s => s._id) } },
+                        $pull: { players: { $in: misplaced.map(s => s._id) } }
+                    });
+                    squadList = misplaced;
+                }
+            }
+            room.squads = squadList;
 
             if (!room.squads || room.squads.length === 0) {
                 return res.json({ success: true, gameStates: [], room, currentMatchNumber: room.currentMatchNumber || 1 });
@@ -710,7 +771,7 @@ router.get('/roomMatchState/:roomId', async (req, res) => {
             ? (room.players || [])
             : room.mode === 'DUO'
                 ? (room.duos || [])
-                : (room.squads || []);
+                : (room.squads || []).map(s => s._id || s);
 
         const distinctMatches = await SquadGameState.distinct('matchNumber', {
             $or: [
@@ -720,7 +781,7 @@ router.get('/roomMatchState/:roomId', async (req, res) => {
         });
         const played = distinctMatches.map(Number).filter(n => !isNaN(n));
         const maxPlayed = played.length > 0 ? Math.max(...played) : 0;
-        const currentMatchNumber = Math.max(room.currentMatchNumber || 1, maxPlayed + 1);
+        const currentMatchNumber = played.length > 0 ? (maxPlayed + 1) : 1;
 
         res.json({
             success: true,

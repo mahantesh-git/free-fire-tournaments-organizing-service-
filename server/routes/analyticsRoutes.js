@@ -37,19 +37,18 @@ router.get('/tournament/:tournamentId/overview', async (req, res) => {
         // Calculate analytics
         const totalMatches = matches.length;
         const totalKills = matches.reduce((sum, match) => {
-            return sum + match.participants.reduce((pSum, p) => pSum + (p.totalKills || 0), 0);
+            return sum + (match.participants || []).reduce((pSum, p) => pSum + (p.totalKills || 0), 0);
         }, 0);
 
         const averageMatchDuration = totalMatches > 0
-            ? Math.floor(matches.reduce((sum, m) => sum + m.duration, 0) / totalMatches)
+            ? Math.floor(matches.reduce((sum, m) => sum + (m.duration || 0), 0) / totalMatches)
             : 0;
 
-        const topKillers = [];
         const playerKills = {};
 
         matches.forEach(match => {
-            match.participants.forEach(participant => {
-                participant.players?.forEach(player => {
+            (match.participants || []).forEach(participant => {
+                (participant.players || []).forEach(player => {
                     if (!playerKills[player.ffId]) {
                         playerKills[player.ffId] = {
                             ffId: player.ffId,
@@ -168,7 +167,7 @@ router.get('/player/:playerId/stats', async (req, res) => {
         let top3Finishes = 0;
 
         matches.forEach(match => {
-            match.participants.forEach(participant => {
+            (match.participants || []).forEach(participant => {
                 const player = participant.players?.find(p => p.playerId === playerId);
                 if (player) {
                     totalKills += player.kills || 0;

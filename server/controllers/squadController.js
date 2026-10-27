@@ -1,6 +1,7 @@
 import { getTenantModel } from '../utils/tenantModel.js';
 import squadSchema from '../models/tenant/Squad.js';
 import killsSchema from '../models/tenant/Kills.js';
+import { AutoRoomService } from '../services/AutoRoomService.js';
 
 // Register a squad with 4 players
 export const registerSquad = async (req, res) => {
@@ -21,7 +22,7 @@ export const registerSquad = async (req, res) => {
             return res.status(404).json({ error: 'Tournament not found' });
         }
 
-        if (tournament.mode !== 'SQUAD') {
+        if (tournament.mode !== 'SQUAD' && tournament.mode !== 'CLASH_SQUAD') {
             return res.status(400).json({ error: `This tournament is in ${tournament.mode} mode. Cannot register a squad.` });
         }
 
@@ -65,10 +66,28 @@ export const registerSquad = async (req, res) => {
             }
         }
 
+        // Auto-assign squad to room
+        let roomAssignment = null;
+        if (tournament.autoRoomAssignment !== false) {
+            try {
+                roomAssignment = await AutoRoomService.assignParticipant({
+                    tenantConnection: req.tenantConnection,
+                    tournamentId,
+                    participantType: tournament.mode === 'CLASH_SQUAD' ? 'CLASH_SQUAD' : 'SQUAD',
+                    participantId: squad._id,
+                    io: req.app.get('io'),
+                    tenantId: req.headers['x-tenant-id']
+                });
+            } catch (roomErr) {
+                console.error('Auto-room assignment error for squad:', roomErr);
+            }
+        }
+
         res.status(201).json({
             success: true,
             message: 'Squad registered successfully',
-            squad
+            squad,
+            roomAssignment
         });
     } catch (error) {
         console.error('Squad registration error:', error);

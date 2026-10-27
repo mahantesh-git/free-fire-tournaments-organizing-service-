@@ -1,5 +1,6 @@
 import { getTenantModel } from '../utils/tenantModel.js';
 import duoSchema from '../models/tenant/Duo.js';
+import { AutoRoomService } from '../services/AutoRoomService.js';
 
 // Register a duo team with 2 players
 export const registerDuo = async (req, res) => {
@@ -64,10 +65,28 @@ export const registerDuo = async (req, res) => {
             }
         }
 
+        // Auto-assign duo to room
+        let roomAssignment = null;
+        if (tournament.autoRoomAssignment !== false) {
+            try {
+                roomAssignment = await AutoRoomService.assignParticipant({
+                    tenantConnection: req.tenantConnection,
+                    tournamentId,
+                    participantType: 'DUO',
+                    participantId: duo._id,
+                    io: req.app.get('io'),
+                    tenantId: req.headers['x-tenant-id']
+                });
+            } catch (roomErr) {
+                console.error('Auto-room assignment error for duo:', roomErr);
+            }
+        }
+
         res.status(201).json({
             success: true,
             message: 'Duo team registered successfully',
-            duo
+            duo,
+            roomAssignment
         });
     } catch (error) {
         console.error('Duo registration error:', error);

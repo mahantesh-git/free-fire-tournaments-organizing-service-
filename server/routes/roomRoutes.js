@@ -8,15 +8,24 @@ const router = express.Router();
 import { clearRooms } from '../services/RoomAllocationService.js';
 import { getTenantModel } from '../utils/tenantModel.js';
 import roomSchema from '../models/tenant/Room.js';
-import squadGameStateSchema from '../models/tenant/SquadGameState.js';
+import tournamentSchema from '../models/tenant/Tournament.js';
+import squadSchema from '../models/tenant/Squad.js';
+import killsSchema from '../models/tenant/Kills.js';
+import duoSchema from '../models/tenant/Duo.js';
 
 const getModels = (req) => ({
     Room: getTenantModel(req.tenantConnection, 'Room', roomSchema),
-    SquadGameState: getTenantModel(req.tenantConnection, 'SquadGameState', squadGameStateSchema)
+    SquadGameState: getTenantModel(req.tenantConnection, 'SquadGameState', squadGameStateSchema),
+    Tournament: getTenantModel(req.tenantConnection, 'Tournament', tournamentSchema),
+    Squad: getTenantModel(req.tenantConnection, 'Squad', squadSchema),
+    Player: getTenantModel(req.tenantConnection, 'Kills', killsSchema),
+    Duo: getTenantModel(req.tenantConnection, 'Duo', duoSchema)
 });
 
 router.post('/generate', auditMiddleware('GENERATE_ROOMS', 'ROOM'), roomController.autoAssignRooms);
 router.post('/reset', auditMiddleware('RESET_ROOMS', 'ROOM'), roomController.resetRooms);
+router.post('/swap', auditMiddleware('SWAP_PARTICIPANT', 'ROOM'), roomController.swapParticipant);
+router.post('/lock', auditMiddleware('LOCK_ROOMS', 'ROOM'), roomController.toggleLockRooms);
 router.get('/tournament/:tournamentId', roomController.getRooms);
 router.put('/:id/credentials', auditMiddleware('UPDATE_CREDENTIALS', 'ROOM'), roomController.updateCredentials);
 router.put('/:id/moderator', auditMiddleware('ASSIGN_MODERATOR', 'ROOM'), roomController.assignModerator);
@@ -25,9 +34,10 @@ router.put('/:id/moderator', auditMiddleware('ASSIGN_MODERATOR', 'ROOM'), roomCo
  * POST /api/rooms/archive
  * Validate completion and clear rooms (moving effective state to history)
  */
-router.post('/archive', async (req, res) => {
+router.post('/archive', auditMiddleware('ARCHIVE_ROOMS', 'ROOM'), async (req, res) => {
     try {
-        const { Room, SquadGameState } = getModels(req);
+        const models = getModels(req);
+        const { Room, SquadGameState, Tournament } = models;
         const { tournamentId } = req.body;
 
         if (!tournamentId) {
@@ -43,7 +53,6 @@ router.post('/archive', async (req, res) => {
         const roomIds = rooms.map(r => r._id);
 
         // 2. Check for ACTIVE matches (isCompleted: false)
-        // We only care about matches associated with these specific room instances
         const activeMatches = await SquadGameState.countDocuments({
             roomId: { $in: roomIds },
             isCompleted: false
@@ -57,13 +66,27 @@ router.post('/archive', async (req, res) => {
             });
         }
 
-        // 3. Safe to Archive (Delete Rooms)
-        // Match history is preserved in SquadGameState (which now has tournamentId)
-        const result = await Room.deleteMany({ tournamentId });
+        // 3. Clear rooms and reset participants' assigned room field
+        await clearRooms(models, tournamentId);
+
+        // 4. Ensure tournament status and lock are reset
+        await Tournament.findByIdAndUpdate(tournamentId, {
+            status: 'OPEN',
+            totalRooms: 0,
+            roomsLocked: false
+        });
+
+        // 5. Emit socket event
+        if (req.app.get('io') && req.headers['x-tenant-id']) {
+            req.app.get('io').to(req.headers['x-tenant-id']).emit('roomUpdated', {
+                tournamentId,
+                archived: true
+            });
+        }
 
         res.json({
             success: true,
-            message: `Successfully archived! Cleared ${result.deletedCount} rooms. Match history is preserved.`
+            message: `Successfully archived! Cleared ${rooms.length} rooms. Match history is preserved.`
         });
 
     } catch (error) {

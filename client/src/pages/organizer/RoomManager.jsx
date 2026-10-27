@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Trash2, ChevronDown, ChevronUp, Copy, Users, Play, Shield } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Trash2, ChevronDown, ChevronUp, Copy, Users, Play, Shield, Lock, Unlock, ArrowRightLeft } from 'lucide-react';
 import api from '../../services/api';
+import socketService from '../../services/socketService';
 import { toast } from 'react-hot-toast';
 
 const RoomManager = () => {
     const { tournamentId } = useParams();
     const navigate = useNavigate();
+    const [tournament, setTournament] = useState(null);
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
+    const [locking, setLocking] = useState(false);
+    const [swapping, setSwapping] = useState(false);
     const [expandedRoom, setExpandedRoom] = useState(null);
     const [totalSquads, setTotalSquads] = useState(0);
     const [showHistory, setShowHistory] = useState(false);
@@ -38,10 +42,40 @@ const RoomManager = () => {
 
     useEffect(() => {
         fetchRooms();
+
+        // Real-time socket listener for live room updates
+        const socket = socketService.connect();
+        if (socket) {
+            const handleSocketUpdate = (data) => {
+                if (!data || !data.tournamentId || data.tournamentId === tournamentId) {
+                    fetchRooms();
+                }
+            };
+
+            socket.on('roomUpdated', handleSocketUpdate);
+            socket.on('roomsReorganized', handleSocketUpdate);
+            socket.on('roomsLockChanged', handleSocketUpdate);
+            socket.on('squadUpdate', handleSocketUpdate);
+            socket.on('playerAdded', handleSocketUpdate);
+
+            return () => {
+                socket.off('roomUpdated', handleSocketUpdate);
+                socket.off('roomsReorganized', handleSocketUpdate);
+                socket.off('roomsLockChanged', handleSocketUpdate);
+                socket.off('squadUpdate', handleSocketUpdate);
+                socket.off('playerAdded', handleSocketUpdate);
+            };
+        }
     }, [tournamentId]);
 
     const fetchRooms = async () => {
         try {
+            // Fetch Tournament Info
+            const tournyRes = await api.get(`/api/tournaments/${tournamentId}`);
+            if (tournyRes.data.success) {
+                setTournament(tournyRes.data.tournament);
+            }
+
             const res = await api.get(`/api/rooms/tournament/${tournamentId}`);
             if (res.data.success) {
                 setRooms(res.data.rooms);
@@ -58,6 +92,49 @@ const RoomManager = () => {
             console.error(error);
             toast.error('Failed to load rooms', { id: 'fetch-rooms-error' });
             setLoading(false);
+        }
+    };
+
+    const handleToggleLock = async () => {
+        const nextLock = !tournament?.roomsLocked;
+        const action = nextLock ? 'Lock' : 'Unlock';
+        if (!confirm(`Are you sure you want to ${action.toLowerCase()} rooms? ${nextLock ? 'New registrations will not be auto-slotted into matches.' : 'This unlocks participant movement and auto-slotting.'}`)) {
+            return;
+        }
+
+        setLocking(true);
+        try {
+            const res = await api.post('/api/rooms/lock', {
+                tournamentId,
+                lock: nextLock
+            });
+            toast.success(res.data.message || `Rooms ${action.toLowerCase()}ed successfully!`);
+            fetchRooms();
+        } catch (error) {
+            toast.error(error.response?.data?.error || `Failed to ${action.toLowerCase()} rooms`);
+        } finally {
+            setLocking(false);
+        }
+    };
+
+    const handleMoveParticipant = async (participantId, sourceRoomId, targetRoomId, participantType) => {
+        if (!targetRoomId || sourceRoomId === targetRoomId) return;
+
+        setSwapping(true);
+        try {
+            const res = await api.post('/api/rooms/swap', {
+                tournamentId,
+                sourceRoomId,
+                targetRoomId,
+                participantId,
+                participantType
+            });
+            toast.success(res.data.message || 'Participant moved successfully!');
+            fetchRooms();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Failed to move participant');
+        } finally {
+            setSwapping(false);
         }
     };
 
@@ -116,14 +193,43 @@ const RoomManager = () => {
 
             <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-4xl font-oswald font-black flex items-center gap-2 uppercase tracking-wider">
-                        <span className="text-cyber-red">Room</span> Allocation
-                    </h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-4xl font-oswald font-black flex items-center gap-2 uppercase tracking-wider">
+                            <span className="text-cyber-red">Room</span> Allocation
+                        </h1>
+                        {tournament && (
+                            <span className={`px-2.5 py-1 text-[10px] font-oswald font-bold uppercase tracking-widest border ${
+                                tournament.roomsLocked
+                                    ? 'border-emerald-500/50 bg-emerald-950/40 text-emerald-400'
+                                    : 'border-amber-500/50 bg-amber-950/40 text-amber-400'
+                            }`}>
+                                {tournament.roomsLocked ? ' Rosters Locked' : ' Auto-Slotting Active'}
+                            </span>
+                        )}
+                    </div>
                     <div className="h-1 w-24 bg-cyber-red mt-2 mb-2"></div>
-                    <p className="text-cyber-muted mt-1 font-medium font-oswald uppercase tracking-wide text-xs">Manage automated room assignments and credentials</p>
+                    <p className="text-cyber-muted mt-1 font-medium font-oswald uppercase tracking-wide text-xs">
+                        {tournament?.roomsLocked
+                            ? 'Rooms finalized. New registrations cannot change room distribution.'
+                            : 'Auto-allocating players sequentially into rooms upon registration.'}
+                    </p>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={handleToggleLock}
+                        disabled={locking}
+                        className={`flex items-center gap-2 px-5 py-3 rounded-none font-oswald font-bold uppercase tracking-wider text-xs shadow-lg transition-all active:scale-95 border ${
+                            tournament?.roomsLocked
+                                ? 'bg-emerald-950/30 border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white'
+                                : 'bg-amber-950/30 border-amber-500 text-amber-400 hover:bg-amber-500 hover:text-white'
+                        }`}
+                        title={tournament?.roomsLocked ? "Unlock rooms to allow re-allocation" : "Lock rooms to finalize roster and prevent auto-allocation shifts"}
+                    >
+                        {tournament?.roomsLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                        {locking ? 'Updating...' : tournament?.roomsLocked ? 'Unlock Rosters' : 'Lock Rosters (Finalize)'}
+                    </button>
+
                     <button
                         onClick={() => setShowHistory(!showHistory)}
                         className="flex items-center gap-2 px-6 py-3 rounded-none bg-transparent text-cyber-muted border border-cyber-muted hover:bg-cyber-muted hover:text-white transition-all active:scale-95 font-oswald font-bold uppercase tracking-wider text-xs shadow-lg"
@@ -132,25 +238,14 @@ const RoomManager = () => {
                         {showHistory ? 'Hide History' : 'Match History'}
                     </button>
 
-                    {/* 
-                    <button
-                        onClick={handleArchive}
-                        disabled={generating || rooms.length === 0}
-                        className="flex items-center gap-2 px-6 py-3 rounded-none bg-transparent text-cyber-red border border-cyber-red hover:bg-cyber-red hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-all active:scale-95 font-oswald font-bold uppercase tracking-wider text-xs shadow-lg shadow-cyber-red/10"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        Finalize & Archive
-                    </button> 
-                    */}
-
                     <button
                         onClick={handleGenerate}
                         disabled={generating || rooms.length > 0}
-                        title={rooms.length > 0 ? "Rooms already generated. Archive them to start over." : "Generate new random rooms"}
+                        title={rooms.length > 0 ? "Rooms already generated. Auto-slotting assigns new players automatically." : "Generate initial room slots"}
                         className={`btn-cyber-primary flex items-center gap-2 px-6 py-3 rounded-none text-xs ${(generating || rooms.length > 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-                        {generating ? 'Processing...' : (rooms.length > 0 ? 'Rooms Generated' : 'Auto-Generate Rooms')}
+                        {generating ? 'Processing...' : (rooms.length > 0 ? 'Rooms Active' : 'Auto-Generate Rooms')}
                     </button>
                 </div>
             </header>
@@ -344,6 +439,27 @@ const RoomManager = () => {
                                                             </div>
                                                         ))}
                                                     </div>
+
+                                                    {/* Move Squad to another room */}
+                                                    {rooms.length > 1 && !tournament?.roomsLocked && (
+                                                        <div className="mt-3 pt-2 border-t border-cyber-border/40 flex items-center justify-between gap-2">
+                                                            <span className="text-[10px] font-oswald uppercase text-cyber-muted tracking-wider flex items-center gap-1">
+                                                                <ArrowRightLeft className="w-3 h-3 text-cyber-pink" /> Move:
+                                                            </span>
+                                                            <select
+                                                                value={room._id}
+                                                                disabled={swapping}
+                                                                onChange={(e) => handleMoveParticipant(squad._id, room._id, e.target.value, 'SQUAD')}
+                                                                className="bg-cyber-black text-[11px] font-oswald text-white px-2 py-0.5 border border-cyber-border focus:border-cyber-pink outline-none cursor-pointer"
+                                                            >
+                                                                {rooms.map(r => (
+                                                                    <option key={r._id} value={r._id} disabled={r._id === room._id}>
+                                                                        {r.name} {r._id === room._id ? '(Current)' : `(${r.squads?.length || 0}/${Math.floor(r.maxCapacity / 4)})`}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -365,14 +481,64 @@ const RoomManager = () => {
                                                             </div>
                                                         ))}
                                                     </div>
+
+                                                    {/* Move Duo to another room */}
+                                                    {rooms.length > 1 && !tournament?.roomsLocked && (
+                                                        <div className="mt-3 pt-2 border-t border-cyber-border/40 flex items-center justify-between gap-2">
+                                                            <span className="text-[10px] font-oswald uppercase text-cyber-muted tracking-wider flex items-center gap-1">
+                                                                <ArrowRightLeft className="w-3 h-3 text-cyber-pink" /> Move:
+                                                            </span>
+                                                            <select
+                                                                value={room._id}
+                                                                disabled={swapping}
+                                                                onChange={(e) => handleMoveParticipant(duo._id, room._id, e.target.value, 'DUO')}
+                                                                className="bg-cyber-black text-[11px] font-oswald text-white px-2 py-0.5 border border-cyber-border focus:border-cyber-pink outline-none cursor-pointer"
+                                                            >
+                                                                {rooms.map(r => (
+                                                                    <option key={r._id} value={r._id} disabled={r._id === room._id}>
+                                                                        {r.name} {r._id === room._id ? '(Current)' : `(${r.duos?.length || 0}/${Math.floor(r.maxCapacity / 2)})`}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
                                     ) : room.mode === 'SOLO' && room.players?.length > 0 ? (
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                             {room.players.map((player, i) => (
-                                                <div key={i} className="bg-cyber-charcoal p-2 border border-cyber-border text-sm truncate text-cyber-muted font-mono hover:text-white hover:border-cyber-red transition-colors cursor-default">
-                                                    {player.ffName || player.playerName || 'Unknown'}
+                                                <div key={i} className="bg-cyber-charcoal p-3 border border-cyber-border hover:border-cyber-red/50 transition-colors">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-white font-oswald font-bold text-xs truncate">
+                                                            {player.playerName || player.ffName || 'Player'}
+                                                        </span>
+                                                        <span className="font-mono text-[10px] text-cyber-pink">
+                                                            {player.ffId}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-cyber-muted text-[11px] truncate mb-2">
+                                                        {player.ffName}
+                                                    </div>
+
+                                                    {/* Move Player to another room */}
+                                                    {rooms.length > 1 && !tournament?.roomsLocked && (
+                                                        <div className="pt-2 border-t border-cyber-border/40 flex items-center justify-between gap-1">
+                                                            <span className="text-[9px] font-oswald uppercase text-cyber-muted">Move:</span>
+                                                            <select
+                                                                value={room._id}
+                                                                disabled={swapping}
+                                                                onChange={(e) => handleMoveParticipant(player._id, room._id, e.target.value, 'PLAYER')}
+                                                                className="bg-cyber-black text-[10px] font-oswald text-white px-1.5 py-0.5 border border-cyber-border focus:border-cyber-red outline-none cursor-pointer"
+                                                            >
+                                                                {rooms.map(r => (
+                                                                    <option key={r._id} value={r._id} disabled={r._id === room._id}>
+                                                                        {r.name} {r._id === room._id ? '(Here)' : `(${r.players?.length || 0}/${r.maxCapacity})`}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>

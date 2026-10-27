@@ -14,6 +14,11 @@ export default defineConfig({
         target: process.env.VITE_API_BASE_URL || process.env.VITE_API_URL || 'http://localhost:9000',
         changeOrigin: true,
       },
+      '/socket.io': {
+        target: 'http://localhost:9000',
+        ws: true,
+        changeOrigin: true,
+      },
     },
   },
 })

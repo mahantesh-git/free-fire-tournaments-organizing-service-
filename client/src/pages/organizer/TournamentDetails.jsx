@@ -56,7 +56,7 @@ const TournamentDetails = () => {
                         const squadList = Array.isArray(squadsRes.data) ? squadsRes.data : (squadsRes.data.squads || []);
                         setPlayerCount(squadList.length);
                     } else if (tourny.mode === 'DUO') {
-                        const duosRes = await api.get(`/api/kills/getDuos?tournamentId=${tournamentId}`);
+                        const duosRes = await api.get(`/api/duos?tournamentId=${tournamentId}`);
                         const duoList = Array.isArray(duosRes.data) ? duosRes.data : (duosRes.data.duos || []);
                         setPlayerCount(duoList.length);
                     } else {

@@ -5,6 +5,7 @@ import api from '../../services/api';
 import socketService from '../../services/socketService';
 import { toast } from 'react-hot-toast';
 import { confirmToast, promptToast } from '../../utils/confirmToast';
+import { getTenantSlug } from '../../utils/tenant';
 
 const ModeratorPanel = () => {
     const [searchParams] = useSearchParams();
@@ -96,35 +97,35 @@ const ModeratorPanel = () => {
         }
     }, [roomId, matchNumber, navigate]);
 
-    const sortedGameStates = useMemo(() => {
+    // Stable squad order: cards never jump around while entering scores or eliminating players
+    const stableGameStates = useMemo(() => {
         if (!gameStates || gameStates.length === 0) return [];
-        const rankingSort = tournament?.settings?.rankingSort || 'POINTS';
-
         return [...gameStates].sort((a, b) => {
-            // 1. DQ at bottom
-            if (a.isDisqualified && !b.isDisqualified) return 1;
-            if (!a.isDisqualified && b.isDisqualified) return -1;
-
-            if (rankingSort === 'KILLS') {
-                // Primary: kills desc, tiebreaker: points desc, then name
-                if ((b.totalKills || 0) !== (a.totalKills || 0)) {
-                    return (b.totalKills || 0) - (a.totalKills || 0);
-                }
-                if ((b.squadPoints || 0) !== (a.squadPoints || 0)) {
-                    return (b.squadPoints || 0) - (a.squadPoints || 0);
-                }
-                return (a.squadName || '').localeCompare(b.squadName || '');
-            } else {
-                // POINTS default: primary points desc, tiebreaker kills desc, then name
-                if ((b.squadPoints || 0) !== (a.squadPoints || 0)) {
-                    return (b.squadPoints || 0) - (a.squadPoints || 0);
-                }
-                if ((b.totalKills || 0) !== (a.totalKills || 0)) {
-                    return (b.totalKills || 0) - (a.totalKills || 0);
-                }
-                return (a.squadName || '').localeCompare(b.squadName || '');
-            }
+            const nameA = a.squadName || a.squadId?.squadName || '';
+            const nameB = b.squadName || b.squadId?.squadName || '';
+            return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
         });
+    }, [gameStates]);
+
+    // Dynamic leaderboard rank computed in-place without moving cards
+    const getDynamicRank = useCallback((targetGs) => {
+        if (!gameStates || gameStates.length === 0) return '-';
+        if (targetGs.isDisqualified) return 'DQ';
+        const rankingSort = tournament?.settings?.rankingSort || 'POINTS';
+        let rank = 1;
+        for (const other of gameStates) {
+            if (other._id?.toString() === targetGs._id?.toString() || other.isDisqualified) continue;
+            if (rankingSort === 'KILLS') {
+                const kDiff = (other.totalKills || 0) - (targetGs.totalKills || 0);
+                if (kDiff > 0) rank++;
+                else if (kDiff === 0 && (other.squadPoints || 0) > (targetGs.squadPoints || 0)) rank++;
+            } else {
+                const pDiff = (other.squadPoints || 0) - (targetGs.squadPoints || 0);
+                if (pDiff > 0) rank++;
+                else if (pDiff === 0 && (other.totalKills || 0) > (targetGs.totalKills || 0)) rank++;
+            }
+        }
+        return rank;
     }, [gameStates, tournament]);
 
     useEffect(() => {
@@ -149,7 +150,7 @@ const ModeratorPanel = () => {
     // Setup Socket Listeners for Real-time Sync
     useEffect(() => {
         const socket = socketService.connect();
-        const tenantSlug = localStorage.getItem('tenantSlug');
+        const tenantSlug = getTenantSlug() || localStorage.getItem('tenantSlug');
 
         if (tenantSlug) {
             console.log(`📡 [ModeratorPanel] Emitting join_tenant: ${tenantSlug}`);
@@ -167,9 +168,9 @@ const ModeratorPanel = () => {
                 const { gameStateId, data: killData } = payload;
 
                 setGameStates(prev => prev.map(gs => {
-                    if (gs._id.toString() === gameStateId.toString()) {
-                        const updatedPlayers = gs.players.map(p =>
-                            p.ffId.toString() === killData.ffId.toString()
+                    if (gs._id?.toString() === gameStateId?.toString()) {
+                        const updatedPlayers = (gs.players || []).map(p =>
+                            p.ffId?.toString() === killData.ffId?.toString()
                                 ? {
                                     ...p,
                                     kills: killData.kills,
@@ -191,11 +192,11 @@ const ModeratorPanel = () => {
             } else if (payload.type === 'playerStatsUpdate') {
                 const { gameStateId, data: playerData } = payload;
                 setGameStates(prev => prev.map(gs => {
-                    if (gs._id.toString() === gameStateId.toString()) {
+                    if (gs._id?.toString() === gameStateId?.toString()) {
                         return {
                             ...gs,
-                            players: gs.players.map(p =>
-                                p.ffId.toString() === playerData.ffId.toString()
+                            players: (gs.players || []).map(p =>
+                                p.ffId?.toString() === playerData.ffId?.toString()
                                     ? { ...p, isEliminated: playerData.isEliminated, kills: playerData.kills }
                                     : p
                             )
@@ -203,22 +204,8 @@ const ModeratorPanel = () => {
                     }
                     return gs;
                 }));
-            } else if (payload.type === 'matchComplete') {
-                console.log('🏆 [ModeratorPanel] Match Complete Update:', payload);
-                setGameStates(prev => prev.map(gs => {
-                    // Check by ID or SquadID match
-                    if (gs._id === payload.gameStateId || (gs.squadId && gs.squadId._id === payload.squadId)) {
-                        return {
-                            ...gs,
-                            isCompleted: true,
-                            squadPlacement: payload.data.rank,
-                            squadPoints: payload.data.points
-                        };
-                    }
-                    return gs;
-                }));
-            } else if (payload.type === 'disqualified') {
-                console.log('🔄 [ModeratorPanel] Disqualification update. Refreshing...');
+            } else if (payload.type === 'matchComplete' || payload.type === 'disqualified' || payload.type === 'dqRevoked' || payload.type === 'matchReopened' || payload.type === 'statsUpdate' || payload.type === 'roomMatchStarted') {
+                console.log('🔄 [ModeratorPanel] Match state changed. Refreshing...');
                 fetchAssignedSquads(true);
             }
         };
@@ -509,11 +496,11 @@ const ModeratorPanel = () => {
                     </div>
                 ) : (
                     <div className="grid gap-4">
-                        {sortedGameStates.map((gs, index) => {
+                        {stableGameStates.map((gs) => {
                             // Booyah = survived last in-match (squadPlacement === 1)
                             const isBooyah = gs.isCompleted && gs.squadPlacement === 1;
-                            // Leaderboard rank = sorted position (by kills/points)
-                            const leaderboardRank = index + 1;
+                            // Leaderboard rank = computed in-place without moving squad cards
+                            const leaderboardRank = getDynamicRank(gs);
                             return (
                                 <div key={gs._id} className={`relative bg-cyber-card border transition-all duration-300 group ${gs.isDisqualified ? 'border-cyber-red/50 shadow-[0_0_15px_rgba(255,59,59,0.2)]' : 'border-white/5 hover:border-cyber-neon/30 hover:shadow-[0_0_20px_rgba(0,240,255,0.1)]'}`}>
                                     <div

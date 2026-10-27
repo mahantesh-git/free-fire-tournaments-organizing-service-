@@ -6,6 +6,7 @@ import socketService from '../../services/socketService';
 import { toast } from 'react-hot-toast';
 import { confirmToast, promptToast } from '../../utils/confirmToast';
 import Button from '../../components/common/Button';
+import { getTenantSlug } from '../../utils/tenant';
 
 const RoomMatchControl = () => {
     const { roomId } = useParams();
@@ -94,16 +95,16 @@ const RoomMatchControl = () => {
 
     useEffect(() => {
         const socket = socketService.connect();
-        const tenantSlug = localStorage.getItem('tenantSlug');
+        const tenantSlug = getTenantSlug() || localStorage.getItem('tenantSlug');
         if (tenantSlug) socketService.emit('join_tenant', tenantSlug);
 
         const handleSquadUpdate = (data) => {
             if (data.type === 'killUpdate') {
                 const { gameStateId, data: killData } = data;
                 setGameStates(prev => prev.map(gs => {
-                    if (gs._id.toString() === gameStateId.toString()) {
-                        const updatedPlayers = gs.players.map(p =>
-                            p.ffId.toString() === killData.ffId.toString()
+                    if (gs._id?.toString() === gameStateId?.toString()) {
+                        const updatedPlayers = (gs.players || []).map(p =>
+                            p.ffId?.toString() === killData.ffId?.toString()
                                 ? { ...p, kills: killData.kills, killPoints: killData.killPoints ?? p.killPoints, placementPoints: killData.placementPoints ?? p.placementPoints }
                                 : p
                         );
@@ -114,9 +115,9 @@ const RoomMatchControl = () => {
             } else if (data.type === 'playerStatsUpdate') {
                 const { gameStateId, data: playerData } = data;
                 setGameStates(prev => prev.map(gs => {
-                    if (gs._id.toString() === gameStateId.toString()) {
-                        const updatedPlayers = gs.players.map(p =>
-                            p.ffId.toString() === playerData.ffId.toString()
+                    if (gs._id?.toString() === gameStateId?.toString()) {
+                        const updatedPlayers = (gs.players || []).map(p =>
+                            p.ffId?.toString() === playerData.ffId?.toString()
                                 ? { ...p, isEliminated: playerData.isEliminated, kills: playerData.kills }
                                 : p
                         );
@@ -124,7 +125,7 @@ const RoomMatchControl = () => {
                     }
                     return gs;
                 }));
-            } else if (data.type === 'matchComplete' || data.type === 'statsUpdate' || data.type === 'disqualified') {
+            } else if (data.type === 'matchComplete' || data.type === 'statsUpdate' || data.type === 'disqualified' || data.type === 'dqRevoked' || data.type === 'matchReopened') {
                 fetchInitialData(true); // Silent refresh
             } else if (data.type === 'roomMatchStarted') {
                 // New match was started — refresh the available match list
@@ -148,7 +149,7 @@ const RoomMatchControl = () => {
             socketService.off('squadUpdate', handleSquadUpdate);
             socketService.off('timerUpdate', handleTimerUpdate);
         };
-    }, [roomId, fetchInitialData]);
+    }, [roomId, fetchInitialData, fetchAvailableMatches]);
     const fetchRoomAndState = () => fetchInitialData();
 
     // --- TIMER HANDLERS ---
@@ -322,37 +323,37 @@ const RoomMatchControl = () => {
         } catch (error) { toast.error('Failed to revoke DQ'); }
     };
 
-    const sortedGameStates = useMemo(() => {
+    // Stable squad order: cards never jump around while entering scores or eliminating players
+    const stableGameStates = useMemo(() => {
         if (!gameStates || gameStates.length === 0) return [];
-        const rankingSort = tournament?.settings?.rankingSort || 'POINTS';
-
         return [...gameStates].sort((a, b) => {
-            // 1. DQ at bottom
-            if (a.isDisqualified && !b.isDisqualified) return 1;
-            if (!a.isDisqualified && b.isDisqualified) return -1;
-
-            // 2. Sort by the tournament's chosen ranking metric
-            if (rankingSort === 'KILLS') {
-                // Primary: total kills desc, tiebreaker: points desc, then name
-                if ((b.totalKills || 0) !== (a.totalKills || 0)) {
-                    return (b.totalKills || 0) - (a.totalKills || 0);
-                }
-                if ((b.squadPoints || 0) !== (a.squadPoints || 0)) {
-                    return (b.squadPoints || 0) - (a.squadPoints || 0);
-                }
-                return (a.squadName || '').localeCompare(b.squadName || '');
-            } else {
-                // POINTS default: primary points desc, tiebreaker kills desc, then name
-                if ((b.squadPoints || 0) !== (a.squadPoints || 0)) {
-                    return (b.squadPoints || 0) - (a.squadPoints || 0);
-                }
-                if ((b.totalKills || 0) !== (a.totalKills || 0)) {
-                    return (b.totalKills || 0) - (a.totalKills || 0);
-                }
-                return (a.squadName || '').localeCompare(b.squadName || '');
-            }
+            const nameA = a.squadName || a.squadId?.squadName || '';
+            const nameB = b.squadName || b.squadId?.squadName || '';
+            return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
         });
+    }, [gameStates]);
+
+    // Dynamic leaderboard rank computed in-place without moving cards
+    const getDynamicRank = useCallback((targetGs) => {
+        if (!gameStates || gameStates.length === 0) return '-';
+        if (targetGs.isDisqualified) return 'DQ';
+        const rankingSort = tournament?.settings?.rankingSort || 'POINTS';
+        let rank = 1;
+        for (const other of gameStates) {
+            if (other._id?.toString() === targetGs._id?.toString() || other.isDisqualified) continue;
+            if (rankingSort === 'KILLS') {
+                const kDiff = (other.totalKills || 0) - (targetGs.totalKills || 0);
+                if (kDiff > 0) rank++;
+                else if (kDiff === 0 && (other.squadPoints || 0) > (targetGs.squadPoints || 0)) rank++;
+            } else {
+                const pDiff = (other.squadPoints || 0) - (targetGs.squadPoints || 0);
+                if (pDiff > 0) rank++;
+                else if (pDiff === 0 && (other.totalKills || 0) > (targetGs.totalKills || 0)) rank++;
+            }
+        }
+        return rank;
     }, [gameStates, tournament]);
+
 
     // Derived
     const isSolo = room?.mode === 'SOLO';
@@ -589,12 +590,12 @@ const RoomMatchControl = () => {
                             <div className="col-span-3 text-right">Actions</div>
                         </div>
 
-                        {sortedGameStates.map((gs, index) => {
+                        {stableGameStates.map((gs) => {
                             const isActive = !gs.isCompleted && !gs.isDisqualified;
                             // Booyah = survived last in-match (squadPlacement === 1)
                             const isBooyah = gs.isCompleted && gs.squadPlacement === 1;
-                            // Leaderboard rank = sorted position (by kills/points)
-                            const leaderboardRank = index + 1;
+                            // Leaderboard rank = computed in-place without moving squad cards
+                            const leaderboardRank = getDynamicRank(gs);
                             // Survival placement from server (elimination order)
                             const survivalRank = gs.squadPlacement || '-';
 

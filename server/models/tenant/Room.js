@@ -48,6 +48,18 @@ const roomSchema = new mongoose.Schema({
         enum: ['PENDING', 'READY', 'ONGOING', 'COMPLETED'],
         default: 'PENDING'
     },
+    isLocked: {
+        type: Boolean,
+        default: false
+    },
+    currentCapacity: {
+        type: Number,
+        default: 0
+    },
+    maxCapacity: {
+        type: Number,
+        default: 48
+    },
     // Multi-match tracking: server is the single source of truth for the active match number
     currentMatchNumber: {
         type: Number,
