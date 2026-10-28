@@ -796,7 +796,270 @@ router.get('/roomMatchState/:roomId', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/squadGame/roomStandings/:roomId
+ * Aggregates room-level multi-match standings across all rounds played in this specific room.
+ * Supports SOLO, DUO, SQUAD, and CLASH_SQUAD modes.
+ */
+router.get('/roomStandings/:roomId', async (req, res) => {
+    try {
+        const { SquadGameState, Room, Tournament } = getModels(req);
+        const { roomId } = req.params;
 
+        const room = await Room.findById(roomId).lean();
+        if (!room) {
+            return res.status(404).json({ success: false, message: 'Room not found' });
+        }
+
+        const tournament = room.tournamentId ? await Tournament.findById(room.tournamentId).lean() : null;
+        const rankingMetric = tournament?.settings?.rankingSort || 'POINTS';
+        const killPointsMultiplier = tournament?.settings?.killPoints !== undefined ? tournament?.settings?.killPoints : 1;
+
+        let placementPointsMap = {};
+        if (tournament?.settings?.placementPoints) {
+            placementPointsMap = tournament.settings.placementPoints instanceof Map
+                ? Object.fromEntries(tournament.settings.placementPoints)
+                : tournament.settings.placementPoints;
+        } else {
+            placementPointsMap = { 1: 12, 2: 9, 3: 8, 4: 7, 5: 6, 6: 5, 7: 4, 8: 3, 9: 2, 10: 1 };
+        }
+
+        const participantsList = room.mode === 'SOLO'
+            ? (room.players || [])
+            : room.mode === 'DUO'
+                ? (room.duos || [])
+                : (room.squads || []);
+
+        // Find all game states for this room across all rounds
+        const gameStates = await SquadGameState.find({
+            $or: [
+                { roomId: room._id },
+                { squadId: { $in: participantsList } }
+            ]
+        }).sort({ matchNumber: 1 }).lean();
+
+        const distinctMatches = Array.from(new Set(gameStates.map(gs => gs.matchNumber).filter(Boolean))).sort((a, b) => a - b);
+
+        // 1. Aggregate Player Standings (All modes including SOLO)
+        const playerMap = new Map();
+
+        gameStates.forEach(gs => {
+            const mNum = gs.matchNumber || 1;
+            const isMatchWin = gs.squadPlacement === 1;
+
+            (gs.players || []).forEach(p => {
+                const key = p.ffId ? String(p.ffId) : (p.playerId ? String(p.playerId) : String(p._id));
+                if (!key) return;
+
+                if (!playerMap.has(key)) {
+                    playerMap.set(key, {
+                        ffId: p.ffId || '',
+                        playerId: p.playerId || '',
+                        playerName: p.playerName || p.ffName || 'Unknown Player',
+                        ffName: p.ffName || p.playerName || '',
+                        teamName: gs.squadName || '',
+                        squadId: gs.squadId,
+                        matchesPlayedSet: new Set(),
+                        matchBreakdown: {}, // { [matchNumber]: kills }
+                        matchPointsBreakdown: {}, // { [matchNumber]: points }
+                        totalKills: 0,
+                        totalDamage: 0,
+                        killPoints: 0,
+                        placementPoints: 0,
+                        totalPoints: 0,
+                        booyahs: 0,
+                        bestPlacement: 999
+                    });
+                }
+
+                const playerEntry = playerMap.get(key);
+                playerEntry.matchesPlayedSet.add(mNum);
+
+                const kills = Number(p.kills) || 0;
+                playerEntry.totalKills += kills;
+                playerEntry.totalDamage += (Number(p.damage) || 0);
+                playerEntry.matchBreakdown[mNum] = (playerEntry.matchBreakdown[mNum] || 0) + kills;
+
+                if (isMatchWin) {
+                    playerEntry.booyahs += 1;
+                }
+
+                if (gs.squadPlacement && gs.squadPlacement < playerEntry.bestPlacement) {
+                    playerEntry.bestPlacement = gs.squadPlacement;
+                }
+
+                // Determine points contribution
+                let pKillPoints = p.killPoints !== undefined ? Number(p.killPoints) : kills * killPointsMultiplier;
+                let pPlacePoints = p.placementPoints !== undefined ? Number(p.placementPoints) : 0;
+
+                // Fallback for SOLO mode or if placement points were not stored on player subdoc
+                if (pPlacePoints === 0 && gs.squadPlacement && placementPointsMap[gs.squadPlacement]) {
+                    const squadPlayerCount = gs.players?.length || 1;
+                    pPlacePoints = Number((placementPointsMap[gs.squadPlacement] / squadPlayerCount).toFixed(2));
+                }
+
+                playerEntry.killPoints += pKillPoints;
+                playerEntry.placementPoints += pPlacePoints;
+                const roundPoints = pKillPoints + pPlacePoints;
+                playerEntry.matchPointsBreakdown[mNum] = (playerEntry.matchPointsBreakdown[mNum] || 0) + roundPoints;
+                playerEntry.totalPoints += roundPoints;
+            });
+        });
+
+        const playerRankings = Array.from(playerMap.values()).map(p => ({
+            ...p,
+            matchesPlayed: p.matchesPlayedSet.size,
+            matchesPlayedSet: undefined,
+            placementPoints: parseFloat(p.placementPoints.toFixed(2)),
+            totalPoints: parseFloat(p.totalPoints.toFixed(2))
+        }));
+
+        // Sort Players by rankingMetric
+        playerRankings.sort((a, b) => {
+            if (rankingMetric === 'KILLS') {
+                if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills;
+                if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+                if (b.booyahs !== a.booyahs) return b.booyahs - a.booyahs;
+                if (a.bestPlacement !== b.bestPlacement) return a.bestPlacement - b.bestPlacement;
+                return (a.playerName || '').localeCompare(b.playerName || '');
+            } else {
+                // POINTS default
+                if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+                if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills;
+                if (b.booyahs !== a.booyahs) return b.booyahs - a.booyahs;
+                if (a.bestPlacement !== b.bestPlacement) return a.bestPlacement - b.bestPlacement;
+                return (a.playerName || '').localeCompare(b.playerName || '');
+            }
+        });
+
+        // Assign player ranks
+        playerRankings.forEach((p, idx) => {
+            p.rank = idx + 1;
+        });
+
+        // 2. Aggregate Team Standings (SQUAD, DUO, CLASH_SQUAD only — empty for SOLO)
+        let teamRankings = [];
+
+        if (room.mode !== 'SOLO') {
+            const teamMap = new Map();
+
+            gameStates.forEach(gs => {
+                const sId = gs.squadId ? String(gs.squadId) : null;
+                if (!sId) return;
+
+                const mNum = gs.matchNumber || 1;
+                const isMatchWin = gs.squadPlacement === 1;
+
+                if (!teamMap.has(sId)) {
+                    teamMap.set(sId, {
+                        squadId: gs.squadId,
+                        squadName: gs.squadName || 'Unknown Team',
+                        matchesPlayedSet: new Set(),
+                        matchBreakdown: {}, // { [matchNumber]: { kills, points, placement } }
+                        booyahs: 0,
+                        totalKills: 0,
+                        placementPoints: 0,
+                        totalPoints: 0,
+                        bestPlacement: 999,
+                        playerMap: new Map()
+                    });
+                }
+
+                const teamEntry = teamMap.get(sId);
+                teamEntry.matchesPlayedSet.add(mNum);
+
+                const kills = Number(gs.totalKills) || 0;
+                teamEntry.totalKills += kills;
+
+                if (isMatchWin) {
+                    teamEntry.booyahs += 1;
+                }
+
+                if (gs.squadPlacement && gs.squadPlacement < teamEntry.bestPlacement) {
+                    teamEntry.bestPlacement = gs.squadPlacement;
+                }
+
+                const placePts = gs.squadPlacement && placementPointsMap[gs.squadPlacement]
+                    ? Number(placementPointsMap[gs.squadPlacement])
+                    : 0;
+                teamEntry.placementPoints += placePts;
+
+                const matchPts = gs.squadPoints !== undefined && gs.squadPoints !== 0
+                    ? Number(gs.squadPoints)
+                    : (kills * killPointsMultiplier) + placePts;
+                teamEntry.totalPoints += matchPts;
+
+                teamEntry.matchBreakdown[mNum] = {
+                    kills,
+                    placementPoints: placePts,
+                    points: matchPts,
+                    placement: gs.squadPlacement || null
+                };
+
+                (gs.players || []).forEach(p => {
+                    const pKey = p.ffId ? String(p.ffId) : (p.playerName || 'p');
+                    if (!teamEntry.playerMap.has(pKey)) {
+                        teamEntry.playerMap.set(pKey, {
+                            playerName: p.playerName || p.ffName || 'Player',
+                            ffName: p.ffName || p.playerName || '',
+                            ffId: p.ffId || ''
+                        });
+                    }
+                });
+            });
+
+            teamRankings = Array.from(teamMap.values()).map(t => ({
+                ...t,
+                matchesPlayed: t.matchesPlayedSet.size,
+                matchesPlayedSet: undefined,
+                placementPoints: parseFloat(t.placementPoints.toFixed(2)),
+                totalPoints: parseFloat(t.totalPoints.toFixed(2)),
+                players: Array.from(t.playerMap.values()),
+                playerMap: undefined
+            }));
+
+            // Sort Teams by rankingMetric
+            teamRankings.sort((a, b) => {
+                if (rankingMetric === 'KILLS') {
+                    if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills;
+                    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+                    if (b.booyahs !== a.booyahs) return b.booyahs - a.booyahs;
+                    if (a.bestPlacement !== b.bestPlacement) return a.bestPlacement - b.bestPlacement;
+                    return (a.squadName || '').localeCompare(b.squadName || '');
+                } else {
+                    // POINTS default
+                    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+                    if (b.totalKills !== a.totalKills) return b.totalKills - a.totalKills;
+                    if (b.booyahs !== a.booyahs) return b.booyahs - a.booyahs;
+                    if (a.bestPlacement !== b.bestPlacement) return a.bestPlacement - b.bestPlacement;
+                    return (a.squadName || '').localeCompare(b.squadName || '');
+                }
+            });
+
+            // Assign team ranks
+            teamRankings.forEach((t, idx) => {
+                t.rank = idx + 1;
+            });
+        }
+
+        res.json({
+            success: true,
+            roomId: room._id,
+            roomName: room.name || room.roomName || 'Room',
+            mode: room.mode || 'SQUAD',
+            rankingMetric,
+            killPointsMultiplier,
+            totalMatchesPlayed: distinctMatches.length,
+            playedMatchNumbers: distinctMatches,
+            playerRankings,
+            teamRankings
+        });
+
+    } catch (error) {
+        console.error('Error fetching room standings:', error);
+        res.status(500).json({ success: false, message: 'Error fetching room standings', error: error.message });
+    }
+});
 
 /**
  * PUT /api/squadGame/updateKills/:gameStateId
@@ -1586,7 +1849,7 @@ router.get('/tournamentHistory/:tournamentId', async (req, res) => {
 
         // Fetch all completed games for this tournament
         // Optimize: Select only necessary fields for the list view
-        console.log(`📜 Fetching history for tournament: ${tournamentId}`);
+        console.log(` Fetching history for tournament: ${tournamentId}`);
         const history = await SquadGameState.find({
             tournamentId,
             isCompleted: true
@@ -1595,7 +1858,7 @@ router.get('/tournamentHistory/:tournamentId', async (req, res) => {
             .limit(100) // Limit to last 100 entries for performance
             .lean();
 
-        console.log(`📜 Found ${history.length} history records.`);
+        console.log(` Found ${history.length} history records.`);
 
         res.json({
             success: true,
