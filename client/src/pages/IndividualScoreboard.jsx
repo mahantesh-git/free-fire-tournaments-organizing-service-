@@ -72,18 +72,51 @@ const IndividualScoreboard = ({ isAudience = false }) => {
         const killPoints = tournament?.settings?.killPoints || 1;
         const placementPointsMap = tournament?.settings?.placementPoints || {};
         const calculatePoints = (player) => {
-            if (player.totalPoints !== undefined) return player.totalPoints;
+            if (player.totalPoints !== undefined && player.totalPoints !== null) return Number(player.totalPoints);
             const pPoints = placementPointsMap[player.matchPlacement || 999] || 0;
-            return pPoints + (player.total || 0) * killPoints;
+            return pPoints + (Number(player.total) || 0) * killPoints;
         };
         filtered = filtered.map(p => ({ ...p, calculatedPoints: calculatePoints(p) }));
         filtered.sort((a, b) => {
-            if (rankingSort === 'KILLS') return (b.total || 0) - (a.total || 0);
-            if (a.calculatedPoints !== b.calculatedPoints) return b.calculatedPoints - a.calculatedPoints;
-            return (b.total || 0) - (a.total || 0);
+            // DQ always at bottom
+            if (a.isDisqualified && !b.isDisqualified) return 1;
+            if (!a.isDisqualified && b.isDisqualified) return -1;
+
+            // When viewing a specific match, match placement defines the actual match winners
+            if (selectedMatch) {
+                // If one is alive and other is eliminated, alive player is higher
+                if (!a.isEliminated && b.isEliminated) return -1;
+                if (a.isEliminated && !b.isEliminated) return 1;
+
+                const placeA = a.matchPlacement && a.matchPlacement > 0 ? Number(a.matchPlacement) : 999;
+                const placeB = b.matchPlacement && b.matchPlacement > 0 ? Number(b.matchPlacement) : 999;
+                if (placeA !== placeB) return placeA - placeB;
+            }
+
+            // Tournament ranking sort with full tiebreakers
+            if (rankingSort === 'KILLS') {
+                const kDiff = (Number(b.total) || 0) - (Number(a.total) || 0);
+                if (kDiff !== 0) return kDiff;
+                const pDiff = (Number(b.calculatedPoints) || 0) - (Number(a.calculatedPoints) || 0);
+                if (pDiff !== 0) return pDiff;
+                const placeA = a.matchPlacement && a.matchPlacement > 0 ? Number(a.matchPlacement) : 999;
+                const placeB = b.matchPlacement && b.matchPlacement > 0 ? Number(b.matchPlacement) : 999;
+                if (placeA !== placeB) return placeA - placeB;
+                return (a.playerName || '').localeCompare(b.playerName || '');
+            } else {
+                // POINTS default
+                const pDiff = (Number(b.calculatedPoints) || 0) - (Number(a.calculatedPoints) || 0);
+                if (pDiff !== 0) return pDiff;
+                const kDiff = (Number(b.total) || 0) - (Number(a.total) || 0);
+                if (kDiff !== 0) return kDiff;
+                const placeA = a.matchPlacement && a.matchPlacement > 0 ? Number(a.matchPlacement) : 999;
+                const placeB = b.matchPlacement && b.matchPlacement > 0 ? Number(b.matchPlacement) : 999;
+                if (placeA !== placeB) return placeA - placeB;
+                return (a.playerName || '').localeCompare(b.playerName || '');
+            }
         });
         setSortedPlayers(filtered);
-    }, [players, currentRoom, tournament]);
+    }, [players, currentRoom, tournament, selectedMatch]);
 
     if (loading) return <ScoreboardSkeleton type="individual" />;
 
@@ -197,7 +230,9 @@ const IndividualScoreboard = ({ isAudience = false }) => {
                     <div className="mb-8">
                         <div className="flex items-center gap-2 mb-4">
                             <Trophy className="w-4 h-4 text-amber-400" />
-                            <span className="text-sm font-semibold text-[#ccc] uppercase tracking-wider">Top Performers</span>
+                            <span className="text-sm font-semibold text-[#ccc] uppercase tracking-wider">
+                                {selectedMatch ? `Match ${selectedMatch} Winners` : 'Tournament Winners'}
+                            </span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {/* 1st */}
@@ -206,7 +241,7 @@ const IndividualScoreboard = ({ isAudience = false }) => {
                                     <div className="absolute inset-0 bg-gradient-to-br from-amber-400/5 to-transparent pointer-events-none rounded-xl" />
                                     <div className="flex items-start justify-between mb-3">
                                         <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 px-2 py-0.5 rounded-full">
-                                            {top1.matchPlacement === 1 ? '🏆 Champion' : '🥇 #1 Place'}
+                                            {top1.matchPlacement === 1 ? '🏆 Winner' : selectedMatch ? '🥇 1st Place' : '🏆 Champion'}
                                         </span>
                                         <Trophy className="w-5 h-5 text-amber-400/50" />
                                     </div>
@@ -227,7 +262,7 @@ const IndividualScoreboard = ({ isAudience = false }) => {
                             {top2 && (
                                 <div className="md:col-start-1 md:row-start-1 bg-[#151515] border border-[#333] rounded-xl p-5">
                                     <div className="flex items-start justify-between mb-3">
-                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest bg-slate-400/10 px-2 py-0.5 rounded-full">🥈 #2 Place</span>
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest bg-slate-400/10 px-2 py-0.5 rounded-full">🥈 2nd Place</span>
                                         <Medal className="w-4 h-4 text-slate-500" />
                                     </div>
                                     <h3 className="text-base font-semibold text-white truncate mb-3">{top2.playerName}</h3>
@@ -247,7 +282,7 @@ const IndividualScoreboard = ({ isAudience = false }) => {
                             {top3 && (
                                 <div className="md:col-start-3 md:row-start-1 bg-[#151515] border border-[#333] rounded-xl p-5">
                                     <div className="flex items-start justify-between mb-3">
-                                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-700/10 px-2 py-0.5 rounded-full">🥉 #3 Place</span>
+                                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-700/10 px-2 py-0.5 rounded-full">🥉 3rd Place</span>
                                         <Medal className="w-4 h-4 text-amber-700/50" />
                                     </div>
                                     <h3 className="text-base font-semibold text-white truncate mb-3">{top3.playerName}</h3>

@@ -77,24 +77,42 @@ const SquadScoreboard = ({ isAudience = false }) => {
             if (a.isDisqualified && !b.isDisqualified) return 1;
             if (!a.isDisqualified && b.isDisqualified) return -1;
 
+            // When viewing a specific match, match placement defines who the actual winners are
+            if (selectedMatch) {
+                const aAlive = a.players?.some(p => !p.isEliminated);
+                const bAlive = b.players?.some(p => !p.isEliminated);
+                if (aAlive && !bAlive) return -1;
+                if (!aAlive && bAlive) return 1;
+
+                const placeA = a.squadPlacement && a.squadPlacement > 0 ? Number(a.squadPlacement) : 999;
+                const placeB = b.squadPlacement && b.squadPlacement > 0 ? Number(b.squadPlacement) : 999;
+                if (placeA !== placeB) return placeA - placeB;
+            }
+
             if (rankingSort === 'KILLS') {
-                // Primary: kills desc — tiebreaker: points desc — final: name asc
+                // Primary: kills desc — tiebreaker: points desc — tiebreaker 2: placement asc — final: name asc
                 if ((b.totalKills || 0) !== (a.totalKills || 0))
                     return (b.totalKills || 0) - (a.totalKills || 0);
                 if ((b.squadPoints || 0) !== (a.squadPoints || 0))
                     return (b.squadPoints || 0) - (a.squadPoints || 0);
+                const placeA = a.squadPlacement && a.squadPlacement > 0 ? Number(a.squadPlacement) : 999;
+                const placeB = b.squadPlacement && b.squadPlacement > 0 ? Number(b.squadPlacement) : 999;
+                if (placeA !== placeB) return placeA - placeB;
                 return (a.squadName || '').localeCompare(b.squadName || '');
             } else {
-                // POINTS default — tiebreaker: kills desc — final: name asc
+                // POINTS default — tiebreaker: kills desc — tiebreaker 2: placement asc — final: name asc
                 if ((b.squadPoints || 0) !== (a.squadPoints || 0))
                     return (b.squadPoints || 0) - (a.squadPoints || 0);
                 if ((b.totalKills || 0) !== (a.totalKills || 0))
                     return (b.totalKills || 0) - (a.totalKills || 0);
+                const placeA = a.squadPlacement && a.squadPlacement > 0 ? Number(a.squadPlacement) : 999;
+                const placeB = b.squadPlacement && b.squadPlacement > 0 ? Number(b.squadPlacement) : 999;
+                if (placeA !== placeB) return placeA - placeB;
                 return (a.squadName || '').localeCompare(b.squadName || '');
             }
         });
         setSortedSquads(filtered);
-    }, [squads, currentRoom, tournament]);
+    }, [squads, currentRoom, tournament, selectedMatch]);
 
     if (loading) return <ScoreboardSkeleton type="squad" />;
 
@@ -209,7 +227,9 @@ const SquadScoreboard = ({ isAudience = false }) => {
                     <div className="mb-8">
                         <div className="flex items-center gap-2 mb-4">
                             <Trophy className="w-4 h-4 text-amber-400" />
-                            <span className="text-sm font-semibold text-[#ccc] uppercase tracking-wider">Top Squads</span>
+                            <span className="text-sm font-semibold text-[#ccc] uppercase tracking-wider">
+                                {selectedMatch ? `Match ${selectedMatch} Winners` : 'Tournament Winners'}
+                            </span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {/* 1st Place — center on desktop */}
@@ -218,7 +238,7 @@ const SquadScoreboard = ({ isAudience = false }) => {
                                     <div className="absolute inset-0 bg-gradient-to-br from-amber-400/5 to-transparent pointer-events-none rounded-xl" />
                                     <div className="flex items-start justify-between mb-3">
                                         <span className="text-[10px] font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 px-2 py-0.5 rounded-full">
-                                            {top1.squadPlacement === 1 ? '🏆 Champion' : '🥇 #1'}
+                                            {top1.squadPlacement === 1 ? '🏆 Winner' : selectedMatch ? '🥇 1st Place' : '🏆 Champion'}
                                         </span>
                                         <Trophy className="w-5 h-5 text-amber-400/50" />
                                     </div>
@@ -240,7 +260,7 @@ const SquadScoreboard = ({ isAudience = false }) => {
                             {top2 && (
                                 <div className="md:col-start-1 md:row-start-1 bg-[#151515] border border-[#333] rounded-xl p-5">
                                     <div className="flex items-start justify-between mb-3">
-                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest bg-slate-400/10 px-2 py-0.5 rounded-full">🥈 #2</span>
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest bg-slate-400/10 px-2 py-0.5 rounded-full">🥈 2nd Place</span>
                                         <Medal className="w-4 h-4 text-slate-500" />
                                     </div>
                                     <h3 className="text-base font-semibold text-white truncate mb-1">{top2.squadName}</h3>
@@ -261,7 +281,7 @@ const SquadScoreboard = ({ isAudience = false }) => {
                             {top3 && (
                                 <div className="md:col-start-3 md:row-start-1 bg-[#151515] border border-[#333] rounded-xl p-5">
                                     <div className="flex items-start justify-between mb-3">
-                                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-700/10 px-2 py-0.5 rounded-full">🥉 #3</span>
+                                        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-700/10 px-2 py-0.5 rounded-full">🥉 3rd Place</span>
                                         <Medal className="w-4 h-4 text-amber-700/50" />
                                     </div>
                                     <h3 className="text-base font-semibold text-white truncate mb-1">{top3.squadName}</h3>
