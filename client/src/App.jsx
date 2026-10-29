@@ -13,6 +13,7 @@ import AdminPanel from './pages/AdminPanel';
 import SquadScoreboard from './pages/SquadScoreboard';
 import IndividualScoreboard from './pages/IndividualScoreboard';
 import LiveScoreboard from './pages/LiveScoreboard';
+import QualificationVerification from './pages/QualificationVerification';
 import OrganizerRegister from './pages/organizer/Register';
 import OrganizerLogin from './pages/organizer/Login';
 import OrganizerDashboard from './pages/organizer/Dashboard';
@@ -41,6 +42,10 @@ function App() {
               <Route path="/scoreboard" element={<IndividualScoreboard />} />
               <Route path="/squadscoreboard" element={<SquadScoreboard />} />
               <Route path="/live/:tournamentId" element={<LiveScoreboard />} />
+
+              {/* Public Qualification & Player Verification Portal */}
+              <Route path="/qualification/:tournamentId" element={<QualificationVerification />} />
+              <Route path="/verify-qualification/:tournamentId" element={<QualificationVerification />} />
 
               {/* Organizer Routes */}
               <Route path="/organizer/register" element={<OrganizerRegister />} />

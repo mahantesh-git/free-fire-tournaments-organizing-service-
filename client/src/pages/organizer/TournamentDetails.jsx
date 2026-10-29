@@ -7,12 +7,13 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { getTenantSlug } from '../../utils/tenant';
 import { getPlayers } from '../../services/playerService';
-import { ArrowLeft, Share2, Copy, Users, Settings, Calendar, Play, History, TrendingUp, Clock } from 'lucide-react';
+import { ArrowLeft, Share2, Copy, Users, Settings, Calendar, Play, History, TrendingUp, Clock, Trophy } from 'lucide-react';
 
-// History Components
+// History & Standings Components
 import MatchHistory from '../../components/history/MatchHistory';
 import TournamentTimeline from '../../components/history/TournamentTimeline';
 import TournamentAnalytics from '../../components/analytics/TournamentAnalytics';
+import TournamentStandingsTab from '../../components/tournament/TournamentStandingsTab';
 
 // QR Code Component
 import QRCodeCard from '../../components/tournament/QRCodeCard';
@@ -23,7 +24,9 @@ const TournamentDetails = () => {
     const [tournament, setTournament] = useState(null);
     const [loading, setLoading] = useState(true);
     const [playerCount, setPlayerCount] = useState(0);
-    const [activeTab, setActiveTab] = useState('overview');
+
+    const initialTab = new URLSearchParams(window.location.search).get('tab') || 'overview';
+    const [activeTab, setActiveTab] = useState(initialTab);
 
     const tenantSlug = getTenantSlug();
     const hasSubdomain = tenantSlug && window.location.hostname.startsWith(`${tenantSlug}.`);
@@ -101,14 +104,14 @@ const TournamentDetails = () => {
 
     return (
         <div className="min-h-screen bg-transparent text-white font-inter">
-            {/* Navbar (Placeholder/Basic for now if not fully redesigned) */}
+            {/* Navbar */}
             <div className="border-b border-cyber-border bg-cyber-charcoal px-6 py-4 flex justify-between items-center shadow-lg">
                 <div className="flex items-center space-x-3">
                     <h1 className="text-xl font-oswald font-bold tracking-wider text-white uppercase">Tournament<span className="text-cyber-red">Manager</span></h1>
                 </div>
                 <button
                     onClick={() => navigate('/organizer/dashboard')}
-                    className="flex items-center text-cyber-muted hover:text-white mb-2 text-sm font-oswald uppercase tracking-wider gap-1"
+                    className="flex items-center text-cyber-muted hover:text-white mb-2 text-sm font-oswald uppercase tracking-wider gap-1 cursor-pointer"
                 >
                     <ArrowLeft className="w-4 h-4" /> Back to Dashboard
                 </button>
@@ -134,7 +137,7 @@ const TournamentDetails = () => {
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                         <Button
                             variant="secondary"
                             onClick={copyLiveLink}
@@ -144,7 +147,7 @@ const TournamentDetails = () => {
                             Copy Live Link
                         </Button>
                         <Button
-                            variant="primary" // Automatically uses new cyber-red style
+                            variant="primary"
                             onClick={() => navigate(`/organizer/tournament/${tournamentId}/rooms`)}
                             className="flex items-center gap-2"
                         >
@@ -156,10 +159,10 @@ const TournamentDetails = () => {
 
                 {/* Tabs Navigation */}
                 <div className="border-b border-cyber-border mb-8" style={{ backgroundColor: '#1A1A1A', borderBottomColor: '#2A2A2A', borderBottomWidth: '1px' }}>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 overflow-x-auto">
                         <button
                             onClick={() => setActiveTab('overview')}
-                            className={`px-6 py-3 font-oswald uppercase tracking-wider text-sm transition-all ${activeTab === 'overview'
+                            className={`px-6 py-3 font-oswald uppercase tracking-wider text-sm transition-all shrink-0 cursor-pointer ${activeTab === 'overview'
                                 ? 'bg-cyber-red text-white border-b-2 border-cyber-red'
                                 : 'text-cyber-muted hover:text-white hover:bg-cyber-charcoal/50'
                                 }`}
@@ -173,8 +176,23 @@ const TournamentDetails = () => {
                             Overview
                         </button>
                         <button
+                            onClick={() => setActiveTab('standings')}
+                            className={`px-6 py-3 font-oswald uppercase tracking-wider text-sm transition-all shrink-0 cursor-pointer ${activeTab === 'standings'
+                                ? 'bg-cyber-red text-white border-b-2 border-cyber-red'
+                                : 'text-cyber-muted hover:text-white hover:bg-cyber-charcoal/50'
+                                }`}
+                            style={{
+                                backgroundColor: activeTab === 'standings' ? '#FF3B3B' : 'transparent',
+                                color: activeTab === 'standings' ? '#ffffff' : '#A0A0A0',
+                                borderBottom: activeTab === 'standings' ? '2px solid #FF3B3B' : 'none'
+                            }}
+                        >
+                            <Trophy className="w-4 h-4 inline mr-2 text-yellow-400" />
+                            Standings
+                        </button>
+                        <button
                             onClick={() => setActiveTab('history')}
-                            className={`px-6 py-3 font-oswald uppercase tracking-wider text-sm transition-all ${activeTab === 'history'
+                            className={`px-6 py-3 font-oswald uppercase tracking-wider text-sm transition-all shrink-0 cursor-pointer ${activeTab === 'history'
                                 ? 'bg-cyber-red text-white border-b-2 border-cyber-red'
                                 : 'text-cyber-muted hover:text-white hover:bg-cyber-charcoal/50'
                                 }`}
@@ -189,7 +207,7 @@ const TournamentDetails = () => {
                         </button>
                         <button
                             onClick={() => setActiveTab('timeline')}
-                            className={`px-6 py-3 font-oswald uppercase tracking-wider text-sm transition-all ${activeTab === 'timeline'
+                            className={`px-6 py-3 font-oswald uppercase tracking-wider text-sm transition-all shrink-0 cursor-pointer ${activeTab === 'timeline'
                                 ? 'bg-cyber-red text-white border-b-2 border-cyber-red'
                                 : 'text-cyber-muted hover:text-white hover:bg-cyber-charcoal/50'
                                 }`}
@@ -204,7 +222,7 @@ const TournamentDetails = () => {
                         </button>
                         <button
                             onClick={() => setActiveTab('analytics')}
-                            className={`px-6 py-3 font-oswald uppercase tracking-wider text-sm transition-all ${activeTab === 'analytics'
+                            className={`px-6 py-3 font-oswald uppercase tracking-wider text-sm transition-all shrink-0 cursor-pointer ${activeTab === 'analytics'
                                 ? 'bg-cyber-red text-white border-b-2 border-cyber-red'
                                 : 'text-cyber-muted hover:text-white hover:bg-cyber-charcoal/50'
                                 }`}
@@ -307,6 +325,10 @@ const TournamentDetails = () => {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {activeTab === 'standings' && (
+                    <TournamentStandingsTab tournamentId={tournamentId} tournament={tournament} />
                 )}
 
                 {activeTab === 'history' && (

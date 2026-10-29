@@ -662,6 +662,18 @@ const RoomMatchControl = () => {
                                 >
                                     <span>Back to Match Controls</span>
                                 </button>
+                                {room?.tournamentId && (
+                                    <button
+                                        onClick={() => navigate(`/organizer/tournament/${room.tournamentId}?tab=standings`)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/40 font-bold font-oswald uppercase text-xs tracking-wider transition-all cursor-pointer"
+                                        title="View overall tournament standings across all rooms"
+                                    >
+                                        <Trophy className="w-4 h-4" />
+                                        <span>Tournament Standings</span>
+                                    </button>
+                                )}
+                                {false && <button>
+                                </button>}
                             </div>
                         </div>
 
@@ -1071,6 +1083,18 @@ const RoomMatchControl = () => {
                                         <Trophy className="w-4 h-4 fill-current" />
                                         <span>View Room Standings</span>
                                     </button>
+                                    {room?.tournamentId && (
+                                        <button
+                                            onClick={() => navigate(`/organizer/tournament/${room.tournamentId}?tab=standings`)}
+                                            className="flex items-center gap-2 px-5 py-2.5 bg-cyber-charcoal hover:bg-cyber-card border border-yellow-500/50 text-yellow-400 font-bold font-oswald uppercase text-xs tracking-wider transition-all cursor-pointer"
+                                            title="View overall tournament standings across all rooms"
+                                        >
+                                            <Trophy className="w-4 h-4" />
+                                            <span>Tournament Standings</span>
+                                        </button>
+                                    )}
+                                    {false && <button>
+                                    </button>}
                                     {isViewingLiveMatch && (
                                         <button
                                             onClick={handleStartMatch}

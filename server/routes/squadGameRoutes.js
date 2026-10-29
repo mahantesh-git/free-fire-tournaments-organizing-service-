@@ -11,6 +11,7 @@ import duoSchema from '../models/tenant/Duo.js';
 import { getTenantModel } from '../utils/tenantModel.js';
 import { checkKillUpdateAuth, validateSquadAccess } from '../middlewares/authMiddleware.js';
 import HistoryService from '../services/historyService.js';
+import { calculateTournamentStanding, checkAndTriggerTournamentStanding } from '../services/tournamentStandingService.js';
 
 const router = express.Router();
 
@@ -326,6 +327,22 @@ const finalizeSquadMatch = async (req, gameStateId, providedPlacement = null) =>
             } catch (historyError) {
                 console.error('❌ Failed to save match history/stats (Manual Win):', historyError);
             }
+        }
+    }
+
+    // 10. Check if all rooms in this tournament are completed, and trigger tournament standings
+    if (room && room.tournamentId) {
+        try {
+            await checkAndTriggerTournamentStanding({
+                tenantConnection: req.tenantConnection,
+                tournamentId: room.tournamentId,
+                historyService: req.historyService,
+                io: req.app.get('io'),
+                tenantSlug: req.tenant?.slug,
+                performedBy: { userId: req.tenant?._id, role: 'SYSTEM' }
+            });
+        } catch (standingErr) {
+            console.error('Failed to check/trigger tournament standings:', standingErr);
         }
     }
 
@@ -1058,6 +1075,68 @@ router.get('/roomStandings/:roomId', async (req, res) => {
     } catch (error) {
         console.error('Error fetching room standings:', error);
         res.status(500).json({ success: false, message: 'Error fetching room standings', error: error.message });
+    }
+});
+
+/**
+ * GET /api/squadGame/tournamentStandings/:tournamentId
+ * Aggregates tournament-level multi-room standings across all rooms and rounds.
+ */
+router.get('/tournamentStandings/:tournamentId', async (req, res) => {
+    try {
+        const { tournamentId } = req.params;
+        const forceRefresh = req.query.refresh === 'true';
+
+        const result = await calculateTournamentStanding({
+            tenantConnection: req.tenantConnection,
+            tournamentId,
+            forceSave: forceRefresh,
+            historyService: req.historyService,
+            io: req.app.get('io'),
+            tenantSlug: req.tenant?.slug,
+            performedBy: { userId: req.tenant?._id, role: 'ORGANIZER' }
+        });
+
+        res.json({
+            success: true,
+            isComplete: result.isComplete,
+            standing: result.standing
+        });
+    } catch (error) {
+        console.error('Error fetching tournament standings:', error);
+        res.status(500).json({ success: false, message: 'Error fetching tournament standings', error: error.message });
+    }
+});
+
+/**
+ * POST /api/squadGame/tournamentStandings/:tournamentId/generate
+ * Force generate and persist the official tournament standings across all rooms.
+ */
+router.post('/tournamentStandings/:tournamentId/generate', async (req, res) => {
+    try {
+        const { tournamentId } = req.params;
+
+        const result = await calculateTournamentStanding({
+            tenantConnection: req.tenantConnection,
+            tournamentId,
+            forceSave: true,
+            historyService: req.historyService,
+            io: req.app.get('io'),
+            tenantSlug: req.tenant?.slug,
+            performedBy: { userId: req.tenant?._id, role: 'ORGANIZER' }
+        });
+
+        res.json({
+            success: true,
+            message: result.isComplete
+                ? 'Official tournament standings compiled and tournament marked COMPLETED.'
+                : 'Tournament standings compiled successfully.',
+            isComplete: result.isComplete,
+            standing: result.standing
+        });
+    } catch (error) {
+        console.error('Error generating tournament standings:', error);
+        res.status(500).json({ success: false, message: 'Error generating tournament standings', error: error.message });
     }
 });
 
