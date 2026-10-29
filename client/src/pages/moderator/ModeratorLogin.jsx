@@ -113,7 +113,7 @@ const ModeratorLogin = () => {
                             value={accessCode}
                             onChange={(e) => setAccessCode(e.target.value)}
                             placeholder="MOD#XXXXXXXX"
-                            className="w-full bg-cyber-black border border-cyber-border rounded-none px-4 py-3 text-white placeholder-cyber-muted/30 focus:outline-none focus:border-cyber-red transition-all font-mono tracking-widest uppercase"
+                            className="w-full bg-cyber-black border border-cyber-border rounded-none px-4 py-3 text-white placeholder-cyber-muted/30 focus:outline-none focus:border-cyber-red transition-all font-mono tracking-widest"
                             disabled={loading}
                         />
                     </div>
