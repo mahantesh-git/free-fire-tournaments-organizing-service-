@@ -1,12 +1,11 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { moderatorSchema } from '../models/tenant/Moderator.js';
 import squadSchema from '../models/tenant/Squad.js';
 import roomSchema from '../models/tenant/Room.js';
 import { getTenantModel } from '../utils/tenantModel.js';
 import { checkKillUpdateAuth } from '../middlewares/authMiddleware.js';
-import bcrypt from 'bcryptjs';
 import { sendModeratorCredentials } from '../utils/emailService.js';
-import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -17,6 +16,13 @@ const getModels = (req) => {
         Squad: getTenantModel(req.tenantConnection, 'Squad', squadSchema),
         Room: getTenantModel(req.tenantConnection, 'Room', roomSchema)
     };
+};
+
+// Helper to generate token
+const generateToken = (payload) => {
+    return jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: '24h'
+    });
 };
 
 /**
@@ -59,15 +65,10 @@ router.post('/create', checkKillUpdateAuth, async (req, res) => {
             if (!existing) isUnique = true;
         }
 
-        // Generate a secure temporary password
-        const rawPassword = crypto.randomBytes(6).toString('hex').toUpperCase(); // 12 chars hex
-        const hashedPassword = await bcrypt.hash(rawPassword, 10);
-
         const moderator = new Moderator({
-            name,
-            email: email.toLowerCase(),
-            phoneNumber,
-            password: hashedPassword,
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            phoneNumber: phoneNumber.trim(),
             accessCode,
             createdBy: tenant._id,
             assignedSquads: [],
@@ -77,15 +78,15 @@ router.post('/create', checkKillUpdateAuth, async (req, res) => {
         await moderator.save();
 
         console.log('Moderator Created:', {
+            id: moderator._id,
+            name: moderator.name,
             email: moderator.email,
-            rawPassword: rawPassword,
-            hashedPassword: moderator.password
+            accessCode: moderator.accessCode
         });
 
         // Send credentials via email (Async)
         sendModeratorCredentials(
             { ...moderator.toObject(), tenantSlug: tenant.slug },
-            rawPassword,
             tenant.name,
             req.get('origin')
         );
@@ -335,83 +336,64 @@ router.put('/:id/regenerate', checkKillUpdateAuth, async (req, res) => {
     }
 });
 
-import jwt from 'jsonwebtoken';
-
-// Helper to generate token
-const generateToken = (payload) => {
-    return jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: '24h'
-    });
-};
-
 /**
  * POST /api/moderators/auth
- * Authenticate moderator with access code
+ * Authenticate moderator with email and access code
  */
 router.post('/auth', async (req, res) => {
     try {
         const { Moderator } = getModels(req);
-        const { accessCode, email, password } = req.body;
+        const { accessCode, email } = req.body;
 
-        console.log('Moderator Auth Attempt:', { accessCode, email });
+        console.log('Moderator Auth Attempt:', { email, accessCode });
 
-        let moderator;
-
-        if (email && password) {
-            // Login via Email, Password, AND Access Code
-            // Gracefully handle duplicates by picking the latest one
-            const moderators = await Moderator.find({
-                email: email.toLowerCase(),
-                accessCode: accessCode, // Must match accessCode too
-                isActive: true
-            })
-                .populate('assignedSquads', 'squadName')
-                .populate('assignedRooms', 'roomNumber')
-                .sort({ createdAt: -1 })
-                .limit(1);
-
-            moderator = moderators[0];
-
-            if (moderator) {
-                const isMatch = await bcrypt.compare(password, moderator.password);
-                console.log('Password Comparison:', {
-                    email: email.toLowerCase(),
-                    providedPassword: password,
-                    providedAccessCode: accessCode,
-                    storedHash: moderator.password,
-                    isMatch
-                });
-
-                if (!isMatch) {
-                    return res.status(401).json({
-                        success: false,
-                        message: 'Invalid credentials'
-                    });
-                }
-            } else {
-                console.log('Moderator not found for Email/AccessCode combo:', {
-                    email: email.toLowerCase(),
-                    accessCode: accessCode
-                });
-            }
+        if (!email || !email.trim() || !accessCode || !accessCode.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Both email and access code are required'
+            });
         }
 
+        const normalizedEmail = email.trim().toLowerCase();
+        const trimmedAccessCode = accessCode.trim();
+
+        // Find active moderator with matching email and access code
+        const moderator = await Moderator.findOne({
+            email: normalizedEmail,
+            accessCode: trimmedAccessCode,
+            isActive: true
+        })
+            .populate('assignedSquads', 'squadName')
+            .populate('assignedRooms', 'roomNumber')
+            .sort({ createdAt: -1 });
+
         if (!moderator) {
-            console.log('Authentication Failed: Invalid credentials or inactive', { email: email?.toLowerCase() });
+            console.log('Authentication Failed: Moderator not found or inactive for:', {
+                email: normalizedEmail,
+                accessCode: trimmedAccessCode
+            });
             return res.status(401).json({
                 success: false,
-                message: 'Invalid credentials or moderator is inactive'
+                message: 'Invalid email, access code, or moderator account is inactive'
             });
+        }
+
+        // Update lastUsed timestamp
+        if (typeof moderator.updateLastUsed === 'function') {
+            await moderator.updateLastUsed();
+        } else {
+            moderator.lastUsed = new Date();
+            await moderator.save();
         }
 
         // Generate JWT token
         const token = generateToken({
             id: moderator._id,
             role: 'moderator',
-            tenantSlug: req.tenant.slug,
+            tenantSlug: req.tenant?.slug,
             tokenVersion: moderator.tokenVersion || 0,
-            assignedSquads: moderator.assignedSquads.map(s => s._id),
-            assignedRooms: moderator.assignedRooms.map(r => r._id)
+            assignedSquads: (moderator.assignedSquads || []).map(s => s._id || s),
+            assignedRooms: (moderator.assignedRooms || []).map(r => r._id || r)
         });
 
         res.json({
@@ -420,8 +402,10 @@ router.post('/auth', async (req, res) => {
             moderator: {
                 id: moderator._id,
                 name: moderator.name,
-                assignedSquads: moderator.assignedSquads,
-                assignedRooms: moderator.assignedRooms
+                email: moderator.email,
+                phoneNumber: moderator.phoneNumber,
+                assignedSquads: moderator.assignedSquads || [],
+                assignedRooms: moderator.assignedRooms || []
             },
             token: token
         });

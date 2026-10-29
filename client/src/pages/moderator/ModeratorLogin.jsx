@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, Lock, LogIn } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/common/Button';
@@ -10,11 +10,8 @@ const ModeratorLogin = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    const [loginMethod, setLoginMethod] = useState('email'); // 'email' or 'code'
     const [accessCode, setAccessCode] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const roomId = searchParams.get('room');
@@ -23,13 +20,12 @@ const ModeratorLogin = () => {
     const handleLogin = async (e) => {
         e.preventDefault();
 
-        if (!email.trim() || !password.trim() || !accessCode.trim()) {
-            return toast.error('Please enter email, password, and access code', { id: 'mod-login-empty-fields' });
+        if (!email.trim() || !accessCode.trim()) {
+            return toast.error('Please enter your email and security access code', { id: 'mod-login-empty-fields' });
         }
 
         const payload = {
             email: email.trim(),
-            password: password.trim(),
             accessCode: accessCode.trim()
         };
 
@@ -87,7 +83,7 @@ const ModeratorLogin = () => {
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-white mb-2">Moderator Access</h1>
                     <p className="text-gray-400">
-                        {loginMethod === 'email' ? 'Enter your credentials to continue' : 'Enter your access code to continue'}
+                        Enter your email and access code to continue
                     </p>
                 </div>
 
@@ -106,28 +102,6 @@ const ModeratorLogin = () => {
                             autoFocus
                             disabled={loading}
                         />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-cyber-muted uppercase tracking-widest mb-2 font-oswald">
-                            Password
-                        </label>
-                        <div className="relative">
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                className="w-full bg-cyber-black border border-cyber-border rounded-none px-4 py-3 text-white placeholder-cyber-muted/30 focus:outline-none focus:border-cyber-red transition-all pr-12"
-                                disabled={loading}
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-cyber-muted hover:text-white transition-colors"
-                            >
-                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                            </button>
-                        </div>
                     </div>
 
                     <div>
@@ -163,14 +137,14 @@ const ModeratorLogin = () => {
                         Don't have an access code? Contact the tournament organizer.
                     </p>
                 </div>
-            {/* Security Note */}
-            <div className="mt-6 text-center">
-                <p className="text-xs text-gray-500">
-                    🔒 Your session is secure and will expire after 2 hours of inactivity
-                </p>
-            </div>
-            </div>
 
+                {/* Security Note */}
+                <div className="mt-6 text-center">
+                    <p className="text-xs text-gray-500">
+                        🔒 Your session is secure and will expire after 2 hours of inactivity
+                    </p>
+                </div>
+            </div>
         </div>
     );
 };

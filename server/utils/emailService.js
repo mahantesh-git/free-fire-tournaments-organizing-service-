@@ -58,11 +58,10 @@ export const sendEmail = async ({ to, subject, html, senderName, senderEmail }) 
 /**
  * Send credentials to a new moderator
  * @param {Object} moderator - The moderator object
- * @param {String} password - The raw password (before hashing)
  * @param {String} tenantName - The name of the organization
  * @param {String} origin - Request origin for login URL
  */
-export const sendModeratorCredentials = async (moderator, password, tenantName, origin) => {
+export const sendModeratorCredentials = async (moderator, tenantName, origin) => {
     try {
         // Build the login link using the provided origin (or fallback to localhost)
         const domain = origin || process.env.DOMAIN || 'http://localhost:5173';
@@ -83,7 +82,7 @@ export const sendModeratorCredentials = async (moderator, password, tenantName, 
                     </h1>
                     
                     <p style="font-size: 15px; color: #555555; margin-bottom: 30px; line-height: 1.6;">
-                        You have been registered as a moderator for <strong>${tenantName}</strong>. Your account is now active, and you can access the moderator dashboard using the credentials provided below.
+                        You have been registered as a moderator for <strong>${tenantName}</strong>. Your account is now active, and you can access the moderator dashboard using your email and security access code provided below.
                     </p>
                     
                     <!-- Credentials Card -->
@@ -96,14 +95,8 @@ export const sendModeratorCredentials = async (moderator, password, tenantName, 
                                 </td>
                             </tr>
                             <tr>
-                                <td style="padding: 8px 0; color: #888888; font-size: 13px;">Temporary Password:</td>
+                                <td style="padding: 8px 0; color: #888888; font-size: 13px;">Security Access Code:</td>
                                 <td style="padding: 8px 0; font-weight: 600; color: #FF003C; font-size: 18px; font-family: 'Consolas', 'Monaco', monospace;">
-                                    ${password}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 8px 0; color: #888888; font-size: 13px;">Access Code:</td>
-                                <td style="padding: 8px 0; font-weight: 600; color: #333333; font-family: 'Consolas', 'Monaco', monospace;">
                                     ${moderator.accessCode}
                                 </td>
                             </tr>

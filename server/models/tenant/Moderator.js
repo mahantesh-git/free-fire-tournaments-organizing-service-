@@ -19,10 +19,6 @@ const moderatorSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    password: {
-        type: String,
-        required: true
-    },
     accessCode: {
         type: String,
         required: true,
